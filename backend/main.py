@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from routers import chat, documents
+
 app = FastAPI(title="Local LLM Chat")
 
 app.add_middleware(
@@ -10,7 +12,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.get("/api/health")
-async def health():
-    return {"status": "ok"}
+app.include_router(chat.router)
+app.include_router(documents.router)
