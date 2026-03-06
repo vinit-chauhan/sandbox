@@ -17,12 +17,13 @@ IPV4_PATTERN = re.compile(
     r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b",
 )
 
-# IPv6 candidate pattern; validate with ipaddress
+# IPv6 candidate pattern; validate with ipaddress. Order matters: ":: in middle"
+# must come before "ends with ::" to match e.g. 2600:1f18:1234::1 fully.
 IPV6_PATTERN = re.compile(
     r"\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b"
     r"|\b::(?:[0-9a-fA-F]{1,4}:){0,6}[0-9a-fA-F]{1,4}\b"
-    r"|\b(?:[0-9a-fA-F]{1,4}:){1,7}:\b"
-    r"|\b(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}\b",
+    r"|\b(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}\b"
+    r"|\b(?:[0-9a-fA-F]{1,4}:){1,7}:\b",
 )
 
 
