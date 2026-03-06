@@ -16,3 +16,13 @@ class ChatRequest(BaseModel):
 class DocumentInfo(BaseModel):
     id: str
     name: str
+
+
+class RedactRequest(BaseModel):
+    text: str
+
+
+class RedactResponse(BaseModel):
+    redacted_text: str
+    mapping: dict[str, str]
+    warning: str | None = None
