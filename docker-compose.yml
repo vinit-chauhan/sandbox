@@ -1,3 +1,6 @@
+# Backend reaches Ollama on host via host.docker.internal.
+# Ollama must listen on 0.0.0.0: set OLLAMA_HOST=0.0.0.0 before starting Ollama.
+
 services:
   chromadb:
     image: chromadb/chroma:0.5.0
@@ -12,7 +15,7 @@ services:
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       CHROMA_HOST: chromadb
       CHROMA_PORT: "8000"
-      MODEL_NAME: qwen3.5:9b
+      MODEL_NAME: qwen3.5:4b
     volumes:
       - uploads:/app/uploads
 
