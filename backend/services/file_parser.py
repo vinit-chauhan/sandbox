@@ -15,7 +15,7 @@ def parse_file(path: str, extension: str) -> str:
         doc = Document(path)
         return "\n".join(p.text for p in doc.paragraphs)
 
-    if ext in (".txt", ".md"):
+    if ext in (".txt", ".md", ".log", ".json", ".csv", ".yml", ".yaml"):
         return Path(path).read_text(encoding="utf-8")
 
     raise ValueError(f"Unsupported file type: {ext}")

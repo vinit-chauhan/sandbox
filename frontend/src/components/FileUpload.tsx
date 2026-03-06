@@ -5,7 +5,7 @@ interface Props {
   onUploaded: (doc: Doc) => void;
 }
 
-const ACCEPTED = ".pdf,.docx,.txt,.md";
+const ACCEPTED = ".pdf,.docx,.txt,.md,.log,.json,.csv,.yml,.yaml";
 
 export default function FileUpload({ onUploaded }: Props) {
   const [dragging, setDragging] = useState(false);
@@ -62,7 +62,7 @@ export default function FileUpload({ onUploaded }: Props) {
         <p className="text-sm text-gray-500">
           Drop files here or <span className="text-blue-600">browse</span>
         </p>
-        <p className="text-xs text-gray-400 mt-1">PDF, DOCX, TXT, MD</p>
+        <p className="text-xs text-gray-400 mt-1">PDF, DOCX, TXT, MD, LOG, JSON, CSV, YAML</p>
       </div>
 
       <input
