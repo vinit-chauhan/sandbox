@@ -1,14 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { type Message, streamChat } from "../api/client";
+import { useChatContext } from "../context/ChatContext";
 import MessageBubble from "./MessageBubble";
 
-interface Props {
-  activeDocIds: string[];
-}
-
-export default function ChatWindow({ activeDocIds }: Props) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+export default function ChatWindow() {
+  const { messages, setMessages, input, setInput, checkedIds } =
+    useChatContext();
   const [streaming, setStreaming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -33,7 +30,7 @@ export default function ChatWindow({ activeDocIds }: Props) {
       const timing = await streamChat(
         {
           message: text,
-          document_ids: activeDocIds.length > 0 ? activeDocIds : undefined,
+          document_ids: checkedIds.length > 0 ? checkedIds : undefined,
           history: messages,
         },
         (token) => {
@@ -90,10 +87,10 @@ export default function ChatWindow({ activeDocIds }: Props) {
       </div>
 
       <div className="border-t border-gray-200 bg-white p-4">
-        {activeDocIds.length > 0 && (
+        {checkedIds.length > 0 && (
           <div className="mb-2">
             <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
-              {activeDocIds.length} doc{activeDocIds.length > 1 ? "s" : ""}{" "}
+              {checkedIds.length} doc{checkedIds.length > 1 ? "s" : ""}{" "}
               attached
             </span>
           </div>
