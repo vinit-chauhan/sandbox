@@ -1,9 +1,12 @@
+import logging
 import os
 from functools import lru_cache
 
 import chromadb
 from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+logger = logging.getLogger(__name__)
 
 CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
 CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8000"))
@@ -30,7 +33,9 @@ def _get_embedder():
 def add_document(doc_id: str, text: str) -> None:
     chunks = _splitter.split_text(text)
     if not chunks:
+        logger.warning("No chunks produced for doc_id=%s", doc_id)
         return
+    logger.info("Indexing doc_id=%s, %d chunks", doc_id, len(chunks))
     embeddings = _get_embedder().encode(chunks).tolist()
     ids = [f"{doc_id}_chunk_{i}" for i in range(len(chunks))]
     metadatas = [{"doc_id": doc_id}] * len(chunks)
@@ -51,4 +56,5 @@ def query(doc_ids: list[str], query_text: str, top_k: int = 5) -> str:
 
 
 def delete_document(doc_id: str) -> None:
+    logger.info("Deleting doc_id=%s from collection", doc_id)
     _get_collection().delete(where={"doc_id": doc_id})

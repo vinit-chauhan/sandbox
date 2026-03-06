@@ -1,6 +1,7 @@
 """Redaction API: POST /api/redact with SSE streaming, regex-first then LLM pipeline."""
 
 import json
+import logging
 import os
 
 import httpx
@@ -10,22 +11,14 @@ from fastapi.responses import StreamingResponse
 from schemas import RedactRequest
 from services import geoip
 from services import redaction_regex
+from services.llm_provider import get_provider
 from services.redaction_llm import extract_pii_mapping
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
 
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 MODEL_NAME = os.getenv("MODEL_NAME", "qwen2.5:7b")
-
-
-def _ollama_available() -> bool:
-    """Check if Ollama is reachable. Uses /api/tags for a quick health check."""
-    try:
-        with httpx.Client(timeout=2.0) as client:
-            resp = client.get(f"{OLLAMA_BASE_URL}/api/tags")
-            return resp.status_code == 200
-    except Exception:
-        return False
 
 
 @router.post("/redact")
@@ -36,21 +29,23 @@ async def redact(request: RedactRequest):
         text = request.text
         warning = None
 
-        # (a) GeoIP init — import triggers it
         yield f"data: {json.dumps({'step': 'regex', 'progress': 10})}\n\n"
 
-        # (b) Regex pipeline
         text_after_regex, mapping = redaction_regex.detect_and_build_mapping(
             text, geoip
         )
+        logger.info("Regex redaction found %d PII items", len(mapping))
         yield f"data: {json.dumps({'step': 'regex', 'progress': 40})}\n\n"
 
-        # (c) Ollama check
-        ollama_ok = _ollama_available()
+        provider = get_provider()
+        llm_ok = provider.is_available()
+        logger.info(
+            "LLM provider %s available: %s", provider.name, llm_ok
+        )
 
-        if not ollama_ok:
+        if not llm_ok:
             warning = (
-                "Ollama unavailable; LLM detection skipped. "
+                f"{provider.name.capitalize()} unavailable; LLM detection skipped. "
                 "Only regex redaction applied."
             )
             redacted_text = text_after_regex
@@ -58,13 +53,11 @@ async def redact(request: RedactRequest):
             yield f"data: {json.dumps({'step': 'llm', 'progress': 50})}\n\n"
 
             try:
-                # (d) LLM extraction and merge
                 mapping_before_llm = dict(mapping)
                 mapping = await extract_pii_mapping(
                     text_after_regex, mapping, model=MODEL_NAME
                 )
 
-                # Apply only LLM-added replacements (longest first to avoid collisions)
                 new_items = [
                     (o, r) for o, r in mapping.items() if o not in mapping_before_llm
                 ]
@@ -73,13 +66,19 @@ async def redact(request: RedactRequest):
                 for orig, repl in new_items:
                     if orig in text_after_regex:
                         redacted_text = redacted_text.replace(orig, repl)
-            except (httpx.HTTPError, httpx.RequestError):
+            except (httpx.HTTPError, httpx.RequestError, Exception) as exc:
+                logger.error("LLM redaction failed: %s", exc, exc_info=True)
                 warning = (
-                    "Ollama unavailable; LLM detection skipped. "
+                    f"{provider.name.capitalize()} error; LLM detection skipped. "
                     "Only regex redaction applied."
                 )
                 redacted_text = text_after_regex
 
+        logger.info(
+            "Redaction complete: %d total mappings, warning=%s",
+            len(mapping),
+            warning,
+        )
         yield f"data: {json.dumps({'step': 'done', 'progress': 100, 'redacted_text': redacted_text, 'mapping': mapping, 'warning': warning})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

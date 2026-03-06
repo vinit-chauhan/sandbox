@@ -1,11 +1,15 @@
-import os
 import json
+import logging
+import os
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
 from schemas import ChatRequest
-from services import rag, ollama_client
+from services import rag
+from services.llm_provider import get_provider
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
 
@@ -29,9 +33,13 @@ async def chat(request: ChatRequest):
 
     messages.append({"role": "user", "content": request.message})
 
+    provider = get_provider()
+    logger.info("Chat request: provider=%s, model=%s", provider.name, MODEL_NAME)
+
     async def event_stream():
-        async for token in ollama_client.stream_chat(messages, MODEL_NAME):
+        async for token in provider.stream_chat(messages, MODEL_NAME):
             yield f"data: {json.dumps({'token': token})}\n\n"
         yield "data: [DONE]\n\n"
+        logger.debug("Chat stream completed")
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

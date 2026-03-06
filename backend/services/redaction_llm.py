@@ -1,12 +1,16 @@
 """
 LLM-based PII extraction for redaction. Extracts hostnames, usernames, and paths
-containing usernames from log text using Ollama with structured JSON format.
+containing usernames from log text using the configured LLM provider with
+structured JSON format.
 """
 
 import json
+import logging
 import os
 
-from services.ollama_client import chat
+from services.llm_provider import get_provider
+
+logger = logging.getLogger(__name__)
 
 OLLAMA_PII_FORMAT_SCHEMA = {
     "type": "object",
@@ -59,6 +63,9 @@ async def extract_pii_mapping(
     model = model or os.getenv("MODEL_NAME", "qwen2.5:7b")
     mapping = dict(existing_mapping)
 
+    provider = get_provider()
+    logger.info("PII extraction using %s provider, model=%s", provider.name, model)
+
     prompt = """Extract PII from this log text. Return JSON with:
 - hostnames: list of hostnames (FQDNs, server names)
 - usernames: list of usernames (login names, user identifiers)
@@ -72,12 +79,17 @@ If nothing found for a category, return empty array []."""
     ]
 
     try:
-        response = await chat(messages, model, format_schema=OLLAMA_PII_FORMAT_SCHEMA)
+        response = await provider.chat(
+            messages, model, format_schema=OLLAMA_PII_FORMAT_SCHEMA
+        )
         content = response.get("message", {}).get("content", "")
         if not content:
+            logger.warning("Empty LLM response for PII extraction")
             return mapping
         parsed = json.loads(content)
-    except (ValueError, KeyError):
+        logger.debug("LLM PII result: %s", parsed)
+    except (ValueError, KeyError) as exc:
+        logger.error("PII extraction parse error: %s", exc)
         return mapping
 
     hostname_idx = 0
@@ -110,4 +122,8 @@ If nothing found for a category, return empty array []."""
             if path_str not in mapping:
                 mapping[path_str] = redacted_path
 
+    logger.info(
+        "PII extraction complete: %d new mappings",
+        len(mapping) - len(existing_mapping),
+    )
     return mapping

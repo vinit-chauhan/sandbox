@@ -3,7 +3,7 @@
 import json
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from services.redaction_llm import extract_pii_mapping
 
@@ -12,14 +12,17 @@ pytest_plugins = ("pytest_asyncio",)
 
 
 @pytest.fixture
-def mock_chat():
-    with patch("services.redaction_llm.chat", new_callable=AsyncMock) as m:
-        yield m
+def mock_provider():
+    provider = MagicMock()
+    provider.name = "test"
+    provider.chat = AsyncMock()
+    with patch("services.redaction_llm.get_provider", return_value=provider):
+        yield provider
 
 
 @pytest.mark.asyncio
-async def test_llm_extracts_hostnames(mock_chat):
-    mock_chat.return_value = {
+async def test_llm_extracts_hostnames(mock_provider):
+    mock_provider.chat.return_value = {
         "message": {
             "content": json.dumps({
                 "hostnames": ["prod-server-01.internal", "db-master.example.org"],
@@ -36,8 +39,8 @@ async def test_llm_extracts_hostnames(mock_chat):
 
 
 @pytest.mark.asyncio
-async def test_llm_extracts_usernames(mock_chat):
-    mock_chat.return_value = {
+async def test_llm_extracts_usernames(mock_provider):
+    mock_provider.chat.return_value = {
         "message": {
             "content": json.dumps({
                 "hostnames": [],
@@ -54,8 +57,8 @@ async def test_llm_extracts_usernames(mock_chat):
 
 
 @pytest.mark.asyncio
-async def test_llm_path_replacement(mock_chat):
-    mock_chat.return_value = {
+async def test_llm_path_replacement(mock_provider):
+    mock_provider.chat.return_value = {
         "message": {
             "content": json.dumps({
                 "hostnames": [],
@@ -72,8 +75,8 @@ async def test_llm_path_replacement(mock_chat):
 
 
 @pytest.mark.asyncio
-async def test_consistent_mapping(mock_chat):
-    mock_chat.return_value = {
+async def test_consistent_mapping(mock_provider):
+    mock_provider.chat.return_value = {
         "message": {
             "content": json.dumps({
                 "hostnames": ["server-a", "server-a"],
@@ -88,8 +91,8 @@ async def test_consistent_mapping(mock_chat):
 
 
 @pytest.mark.asyncio
-async def test_merge_with_existing(mock_chat):
-    mock_chat.return_value = {
+async def test_merge_with_existing(mock_provider):
+    mock_provider.chat.return_value = {
         "message": {
             "content": json.dumps({
                 "hostnames": ["db.internal"],
@@ -107,8 +110,8 @@ async def test_merge_with_existing(mock_chat):
 
 
 @pytest.mark.asyncio
-async def test_invalid_json_fallback(mock_chat):
-    mock_chat.return_value = {
+async def test_invalid_json_fallback(mock_provider):
+    mock_provider.chat.return_value = {
         "message": {"content": "not valid json {{"}
     }
     existing = {"already": "mapped"}
@@ -117,8 +120,8 @@ async def test_invalid_json_fallback(mock_chat):
 
 
 @pytest.mark.asyncio
-async def test_path_with_Users_prefix(mock_chat):
-    mock_chat.return_value = {
+async def test_path_with_Users_prefix(mock_provider):
+    mock_provider.chat.return_value = {
         "message": {
             "content": json.dumps({
                 "hostnames": [],

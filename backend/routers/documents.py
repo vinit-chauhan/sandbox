@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from pathlib import Path
@@ -6,6 +7,8 @@ from fastapi import APIRouter, UploadFile, HTTPException
 
 from schemas import DocumentInfo
 from services import file_parser, rag
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
 
@@ -36,6 +39,7 @@ async def upload_file(file: UploadFile):
     text = file_parser.parse_file(str(save_path), ext)
     rag.add_document(doc_id, text)
 
+    logger.info("Uploaded %s → doc_id=%s (%d bytes)", file.filename, doc_id, len(content))
     return DocumentInfo(id=doc_id, name=file.filename or doc_id)
 
 
@@ -63,4 +67,5 @@ async def delete_document(doc_id: str):
 
     if not deleted:
         raise HTTPException(404, "Document not found")
+    logger.info("Deleted doc_id=%s", doc_id)
     return {"status": "deleted"}

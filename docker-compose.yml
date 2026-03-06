@@ -1,5 +1,8 @@
 # Backend reaches Ollama on host via host.docker.internal.
 # Ollama must listen on 0.0.0.0: set OLLAMA_HOST=0.0.0.0 before starting Ollama.
+#
+# LLM_PROVIDER: "ollama" (default) or "gemini"
+# For Gemini: set GEMINI_API_KEY and optionally GEMINI_MODEL.
 
 services:
   chromadb:
@@ -12,10 +15,14 @@ services:
     depends_on:
       - chromadb
     environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
       OLLAMA_BASE_URL: http://host.docker.internal:11434
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
       CHROMA_HOST: chromadb
       CHROMA_PORT: "8000"
-      MODEL_NAME: qwen3.5:0.8b
+      MODEL_NAME: ${MODEL_NAME:-qwen3.5:0.8b}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - uploads:/app/uploads
 
