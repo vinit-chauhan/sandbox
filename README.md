@@ -5,55 +5,51 @@ A self-hosted AI chat application that runs a Qwen model entirely on-device, let
 ## Architecture
 
 ```
+Host Machine
+└── Ollama            (LLM inference — native, uses Metal/GPU)
+
 Docker Compose
-├── Ollama          (LLM inference — qwen2.5:7b)
-├── ChromaDB        (vector store for document chunks)
-├── Backend         (FastAPI — chat, upload, RAG orchestration)
-└── Frontend        (React + Vite + Tailwind — served by Nginx)
+├── ChromaDB          (vector store for document chunks)
+├── Backend           (FastAPI — chat, upload, RAG orchestration)
+└── Frontend          (React + Vite + Tailwind — served by Nginx)
 ```
 
-All inter-service traffic stays on the internal Docker network. Only port **80** is exposed to the host.
+Ollama runs natively on the host for full Metal/GPU acceleration. The Docker services reach it via `host.docker.internal`. Only port **80** is exposed to the host.
 
 ## Quick Start
+
+1. **Install & start Ollama** on your host:
+
+```bash
+# macOS — https://ollama.com/download
+# Pull the model you want:
+ollama pull qwen3.5:4b
+```
+
+2. **Start the Docker services**:
 
 ```bash
 docker compose up --build
 ```
 
-Then open [http://localhost](http://localhost) in your browser.
-
-On first run, Ollama will pull the `qwen2.5:7b` model (~4.7 GB). Subsequent starts use the cached volume.
+3. Open [http://localhost](http://localhost) in your browser.
 
 ## Swap Model
 
-Change the `MODEL_NAME` environment variable in `docker-compose.yml` — no code changes needed:
+1. Pull the new model on your host: `ollama pull <model>`
+2. Update `MODEL_NAME` in `docker-compose.yml`:
 
 ```yaml
 environment:
   MODEL_NAME: qwen3:8b   # or any Ollama-supported model
 ```
 
-## GPU Support
-
-Uncomment the `deploy` block in the `ollama` service in `docker-compose.yml`:
-
-```yaml
-deploy:
-  resources:
-    reservations:
-      devices:
-        - driver: nvidia
-          capabilities: [gpu]
-```
-
-Falls back to CPU automatically when not present.
+3. Restart the backend: `docker compose restart backend`
 
 ## Project Structure
 
 ```
-├── docker-compose.yml          # Orchestrates all 4 services
-├── ollama/
-│   └── entrypoint.sh           # Starts Ollama + pulls model on first run
+├── docker-compose.yml          # Orchestrates 3 Docker services
 ├── backend/
 │   ├── Dockerfile
 │   ├── requirements.txt

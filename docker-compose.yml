@@ -1,20 +1,4 @@
 services:
-  ollama:
-    image: ollama/ollama
-    entrypoint: ["/bin/sh", "/entrypoint.sh"]
-    volumes:
-      - ollama_data:/root/.ollama
-      - ./ollama/entrypoint.sh:/entrypoint.sh:ro
-    environment:
-      MODEL_NAME: qwen2.5:3b
-    # GPU (optional — uncomment for NVIDIA):
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           capabilities: [gpu]
-
   chromadb:
     image: chromadb/chroma:0.5.0
     volumes:
@@ -23,13 +7,12 @@ services:
   backend:
     build: ./backend
     depends_on:
-      - ollama
       - chromadb
     environment:
-      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
       CHROMA_HOST: chromadb
       CHROMA_PORT: "8000"
-      MODEL_NAME: qwen2.5:3b
+      MODEL_NAME: qwen3.5:0.8b
     volumes:
       - uploads:/app/uploads
 
@@ -41,6 +24,5 @@ services:
       - "80:80"
 
 volumes:
-  ollama_data:
   chroma_data:
   uploads:

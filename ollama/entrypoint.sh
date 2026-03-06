@@ -4,6 +4,6 @@ PID=$!
 
 sleep 8
 
-ollama pull "${MODEL_NAME:-qwen2.5:3b}"
+ollama pull "${MODEL_NAME:-qwen3.5:4b}"
 
 wait $PID

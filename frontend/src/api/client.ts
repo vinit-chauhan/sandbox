@@ -3,9 +3,15 @@ export interface Doc {
   name: string;
 }
 
+export interface ChatTiming {
+  ttft: number;
+  total: number;
+}
+
 export interface Message {
   role: "user" | "assistant";
   content: string;
+  timing?: ChatTiming;
 }
 
 export interface ChatRequest {
@@ -36,7 +42,11 @@ export async function deleteDocument(id: string): Promise<void> {
 export async function streamChat(
   req: ChatRequest,
   onToken: (token: string) => void,
-): Promise<void> {
+): Promise<ChatTiming> {
+  const start = performance.now();
+  let ttft = 0;
+  let firstToken = true;
+
   const res = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -62,13 +72,23 @@ export async function streamChat(
       const trimmed = line.trim();
       if (!trimmed.startsWith("data: ")) continue;
       const payload = trimmed.slice(6);
-      if (payload === "[DONE]") return;
+      if (payload === "[DONE]") {
+        return { ttft, total: performance.now() - start };
+      }
       try {
         const parsed = JSON.parse(payload);
-        if (parsed.token) onToken(parsed.token);
+        if (parsed.token) {
+          if (firstToken) {
+            ttft = performance.now() - start;
+            firstToken = false;
+          }
+          onToken(parsed.token);
+        }
       } catch {
         // skip malformed lines
       }
     }
   }
+
+  return { ttft, total: performance.now() - start };
 }

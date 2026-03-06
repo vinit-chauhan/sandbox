@@ -30,7 +30,7 @@ export default function ChatWindow({ activeDocIds }: Props) {
     setMessages((prev) => [...prev, assistantMsg]);
 
     try {
-      await streamChat(
+      const timing = await streamChat(
         {
           message: text,
           document_ids: activeDocIds.length > 0 ? activeDocIds : undefined,
@@ -41,6 +41,8 @@ export default function ChatWindow({ activeDocIds }: Props) {
           setMessages((prev) => [...prev.slice(0, -1), { ...assistantMsg }]);
         },
       );
+      assistantMsg.timing = timing;
+      setMessages((prev) => [...prev.slice(0, -1), { ...assistantMsg }]);
     } catch (err) {
       console.error("Chat error:", err);
       assistantMsg.content += "\n\n[Error communicating with the model]";
@@ -71,7 +73,7 @@ export default function ChatWindow({ activeDocIds }: Props) {
           </div>
         )}
         {messages.map((msg, i) => (
-          <MessageBubble key={i} role={msg.role} content={msg.content} />
+          <MessageBubble key={i} role={msg.role} content={msg.content} timing={msg.timing} />
         ))}
         {streaming && messages[messages.length - 1]?.content === "" && (
           <div className="flex justify-start mb-3">
