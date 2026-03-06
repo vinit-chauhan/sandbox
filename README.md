@@ -20,6 +20,11 @@ Ollama runs natively on the host for full Metal/GPU acceleration. The Docker ser
 
 1. **Install & start Ollama** on your host:
 
+   **Ollama Docker connectivity:** When the backend runs in Docker, it connects to Ollama via `host.docker.internal:11434`. Ollama binds to `127.0.0.1` by default and rejects connections from the host's network interface. Before starting Ollama, set `OLLAMA_HOST=0.0.0.0` so Ollama listens on all interfaces:
+
+   - macOS/Linux: `export OLLAMA_HOST=0.0.0.0` then `ollama serve` (or `ollama run qwen3.5:4b` which starts serve)
+   - Or run: `OLLAMA_HOST=0.0.0.0 ollama run qwen3.5:4b`
+
 ```bash
 # macOS — https://ollama.com/download
 # Pull the model you want:
