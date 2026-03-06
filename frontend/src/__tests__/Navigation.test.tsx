@@ -49,16 +49,16 @@ function renderAppWithTestChatPage() {
 }
 
 describe("Navigation", () => {
-  it("renders nav with Chat and Redact Logs links", () => {
+  it("renders nav with Chat and Clean Logs links", () => {
     renderAppWithMemoryRouter();
     expect(screen.getByRole("link", { name: "Chat" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Redact Logs" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Clean Logs" })).toBeInTheDocument();
   });
 
-  it("navigates to Redact Logs when link is clicked", () => {
+  it("navigates to Clean Logs when link is clicked", () => {
     renderAppWithMemoryRouter();
-    fireEvent.click(screen.getByRole("link", { name: "Redact Logs" }));
-    expect(screen.getByRole("heading", { name: "Redact Logs" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: "Clean Logs" }));
+    expect(screen.getByRole("heading", { name: "Clean Logs" })).toBeInTheDocument();
     expect(screen.getByText("Coming soon.")).toBeInTheDocument();
   });
 
@@ -67,8 +67,8 @@ describe("Navigation", () => {
     expect(screen.getByTestId("messages-count")).toHaveTextContent("0");
     fireEvent.click(screen.getByRole("button", { name: "Add message" }));
     expect(screen.getByTestId("messages-count")).toHaveTextContent("1");
-    fireEvent.click(screen.getByRole("link", { name: "Redact Logs" }));
-    expect(screen.getByRole("heading", { name: "Redact Logs" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: "Clean Logs" }));
+    expect(screen.getByRole("heading", { name: "Clean Logs" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("link", { name: "Chat" }));
     expect(screen.getByTestId("messages-count")).toHaveTextContent("1");
   });
