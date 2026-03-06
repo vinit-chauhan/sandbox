@@ -4,6 +4,82 @@ import { streamRedact } from "../api/client";
 const ACCEPTED =
   ".log,.txt,.json,.csv,.yml,.yaml,.conf,.config,.ini,.xml,.md,.text";
 
+function downloadFilename(originalName: string): string {
+  const lastDot = originalName.lastIndexOf(".");
+  if (lastDot <= 0) return `${originalName}.clean`;
+  return `${originalName.slice(0, lastDot)}.clean${originalName.slice(lastDot)}`;
+}
+
+interface Span {
+  start: number;
+  end: number;
+  repl: string;
+  origs: string[];
+}
+
+function buildHighlightSpans(
+  text: string,
+  mapping: Record<string, string>,
+): Span[] {
+  const rev = new Map<string, string[]>();
+  for (const [orig, repl] of Object.entries(mapping)) {
+    if (!rev.has(repl)) rev.set(repl, []);
+    rev.get(repl)!.push(orig);
+  }
+  const replacements = [...new Set(Object.values(mapping))].sort(
+    (a, b) => b.length - a.length,
+  );
+  const spans: Span[] = [];
+  for (const repl of replacements) {
+    if (!repl) continue;
+    let pos = 0;
+    while ((pos = text.indexOf(repl, pos)) >= 0) {
+      spans.push({
+        start: pos,
+        end: pos + repl.length,
+        repl,
+        origs: rev.get(repl) ?? [],
+      });
+      pos += repl.length;
+    }
+  }
+  spans.sort((a, b) => b.repl.length - a.repl.length);
+  const filtered: Span[] = [];
+  for (const s of spans) {
+    const overlaps = filtered.some((f) => s.start < f.end && s.end > f.start);
+    if (!overlaps) filtered.push(s);
+  }
+  return filtered.sort((a, b) => a.start - b.start);
+}
+
+function renderHighlightedPreview(text: string, mapping: Record<string, string>) {
+  const spans = buildHighlightSpans(text, mapping);
+  if (spans.length === 0) return text;
+  const segments: Array<{ type: "plain" | "mark"; start: number; end: number; repl?: string; origs?: string[] }> = [];
+  let pos = 0;
+  for (const s of spans) {
+    if (s.start > pos) {
+      segments.push({ type: "plain", start: pos, end: s.start });
+    }
+    segments.push({ type: "mark", start: s.start, end: s.end, repl: s.repl, origs: s.origs });
+    pos = s.end;
+  }
+  if (pos < text.length) {
+    segments.push({ type: "plain", start: pos, end: text.length });
+  }
+  return segments.map((seg) => {
+    if (seg.type === "plain") {
+      return text.slice(seg.start, seg.end);
+    }
+    const title = seg.origs?.length ? `Was: ${seg.origs.join(", ")}` : "";
+    return (
+      <mark key={seg.start} title={title} className="bg-yellow-200">
+        {seg.repl}
+      </mark>
+    );
+  });
+}
+
 export default function RedactPage() {
   const [inputText, setInputText] = useState("");
   const [dragging, setDragging] = useState(false);
@@ -14,6 +90,7 @@ export default function RedactPage() {
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [warning, setWarning] = useState<string | null>(null);
   const [originalFilename, setOriginalFilename] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: DragEvent) => {
@@ -80,6 +157,27 @@ export default function RedactPage() {
     setMapping({});
     setWarning(null);
     setStatus(null);
+    setCopied(false);
+  };
+
+  const handleDownload = () => {
+    const blob = new Blob([redactedText]);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = downloadFilename(originalFilename ?? "output.clean.txt");
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(redactedText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Copy failed:", err);
+    }
   };
 
   if (viewMode === "preview") {
@@ -87,7 +185,21 @@ export default function RedactPage() {
       <div className="p-6">
         <h1 className="text-2xl font-semibold text-gray-800">Clean Logs</h1>
         <div className="mt-4 space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleDownload}
+              className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Download
+            </button>
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="rounded bg-gray-200 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-300"
+            >
+              {copied ? "Copied!" : "Copy"}
+            </button>
             <button
               type="button"
               onClick={handleBackToInput}
@@ -96,8 +208,13 @@ export default function RedactPage() {
               Back to input
             </button>
           </div>
+          {warning && (
+            <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              {warning}
+            </div>
+          )}
           <pre className="whitespace-pre-wrap rounded border border-gray-200 bg-gray-50 p-4 text-sm">
-            {redactedText}
+            {renderHighlightedPreview(redactedText, mapping)}
           </pre>
         </div>
       </div>
