@@ -59,7 +59,9 @@ describe("Navigation", () => {
     renderAppWithMemoryRouter();
     fireEvent.click(screen.getByRole("link", { name: "Clean Logs" }));
     expect(screen.getByRole("heading", { name: "Clean Logs" })).toBeInTheDocument();
-    expect(screen.getByText("Coming soon.")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("Drop a file or paste log text..."),
+    ).toBeInTheDocument();
   });
 
   it("persists Chat state when navigating away and back", () => {
