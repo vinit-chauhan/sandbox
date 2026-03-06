@@ -13,7 +13,7 @@ Add multi-page navigation and a log redaction tool to the existing RAG chat app.
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Multi-Page Navigation** - Routing, layout, nav between Chat and Redact Logs; state preservation; extensible structure
-- [ ] **Phase 2: Redaction Backend** - FastAPI redaction API with regex + LLM, IP rules, GeoIP allowlist, consistent mapping
+- [x] **Phase 2: Redaction Backend** - FastAPI redaction API with regex + LLM, IP rules, GeoIP allowlist, consistent mapping (completed 2026-03-06)
 - [ ] **Phase 3: Redaction Frontend** - Upload, paste, preview with highlights, download, copy, redaction summary
 
 ## Phase Details
@@ -43,13 +43,13 @@ Plans:
   3. API leaves IPs from elastic-package GeoIP list unchanged; replaces other public IPs with IPs from that list
   4. API redacts hostnames and usernames in paths via LLM with consistent mapping (same value → same replacement)
   5. Same PII value always maps to same dummy replacement throughout entire response
-**Plans:** 2/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 02-01-PLAN.md — GeoIP + Schemas + Test scaffolding (DET-03, DET-04)
-- [ ] 02-02-PLAN.md — Regex detection service (DET-01, DET-02, DET-03, DET-04, DET-06)
-- [ ] 02-03-PLAN.md — Ollama chat + LLM service (DET-05)
-- [ ] 02-04-PLAN.md — Redaction router + pipeline (integration)
+- [x] 02-01-PLAN.md — GeoIP + Schemas + Test scaffolding (DET-03, DET-04)
+- [x] 02-02-PLAN.md — Regex detection service (DET-01, DET-02, DET-03, DET-04, DET-06)
+- [x] 02-03-PLAN.md — Ollama chat + LLM service (DET-05)
+- [x] 02-04-PLAN.md — Redaction router + pipeline (integration)
 
 ### Phase 3: Redaction Frontend
 **Goal**: Users can provide log input, see redacted preview with highlights, and obtain output (download, copy, summary)
@@ -61,10 +61,11 @@ Plans:
   3. User sees preview of redacted output with changes visually highlighted before downloading
   4. User can download the redacted file
   5. User can copy redacted text to clipboard and see redaction summary (count by PII type)
-**Plans**: TBD
+**Plans:** 1/2 plans executed
 
 Plans:
-- TBD
+- [x] 03-01-PLAN.md — streamRedact API + Clean Logs terminology (foundation)
+- [ ] 03-02-PLAN.md — RedactPage full UI (input, preview, toolbar, summary)
 
 ## Progress
 
@@ -74,5 +75,5 @@ Phases execute in numeric order: 1 → 2 → 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Multi-Page Navigation | 2/2 | Complete | 01-01, 01-02 |
-| 2. Redaction Backend | 2/4 | In Progress|  |
-| 3. Redaction Frontend | 0/0 | Not started | - |
+| 2. Redaction Backend | 4/4 | Complete   | 2026-03-06 |
+| 3. Redaction Frontend | 1/2 | In Progress|  |

@@ -20,12 +20,12 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Detection
 
-- [ ] **DET-01**: Regex detects structured PII patterns: email addresses, public IP addresses
-- [ ] **DET-02**: Private IPs (10.x.x.x, 172.16-31.x.x, 192.168.x.x) are left untouched during redaction
+- [x] **DET-01**: Regex detects structured PII patterns: email addresses, public IP addresses
+- [x] **DET-02**: Private IPs (10.x.x.x, 172.16-31.x.x, 192.168.x.x) are left untouched during redaction
 - [x] **DET-03**: IPs from elastic-package allowed GeoIP list are left untouched during redaction
 - [x] **DET-04**: Public IPs not in the allowed list are replaced with IPs from the allowed GeoIP list
 - [x] **DET-05**: LLM (via Ollama) detects ambiguous PII that regex cannot: hostnames, usernames, paths containing usernames
-- [ ] **DET-06**: Replacement mapping is consistent — same PII value always maps to the same dummy replacement throughout a file (e.g. host-001, user-002)
+- [x] **DET-06**: Replacement mapping is consistent — same PII value always maps to the same dummy replacement throughout a file (e.g. host-001, user-002)
 
 ### Output
 
@@ -70,12 +70,12 @@ Deferred to future release. Tracked but not in current roadmap.
 | NAV-03 | Phase 1 | Pending |
 | INP-01 | Phase 3 | Pending |
 | INP-02 | Phase 3 | Pending |
-| DET-01 | Phase 2 | Pending |
-| DET-02 | Phase 2 | Pending |
+| DET-01 | Phase 2 | Complete |
+| DET-02 | Phase 2 | Complete |
 | DET-03 | Phase 2 | Complete |
 | DET-04 | Phase 2 | Complete |
 | DET-05 | Phase 2 | Complete |
-| DET-06 | Phase 2 | Pending |
+| DET-06 | Phase 2 | Complete |
 | OUT-01 | Phase 3 | Pending |
 | OUT-02 | Phase 3 | Pending |
 | OUT-03 | Phase 3 | Pending |
