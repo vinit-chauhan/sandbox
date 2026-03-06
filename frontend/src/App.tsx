@@ -1,10 +1,5 @@
-import { ChatProvider } from "./context/ChatContext";
-import ChatPage from "./pages/ChatPage";
+import { AppRoutes } from "./routes";
 
 export default function App() {
-  return (
-    <ChatProvider>
-      <ChatPage />
-    </ChatProvider>
-  );
+  return <AppRoutes />;
 }
