@@ -66,7 +66,7 @@ Plans:
 Plans:
 - [x] 03-01-PLAN.md — streamRedact API + Clean Logs terminology (foundation)
 - [x] 03-02-PLAN.md — RedactPage full UI (input, preview, toolbar, summary)
-- [ ] 03-03-PLAN.md — Ollama Docker connectivity (OLLAMA_HOST docs)
+- [x] 03-03-PLAN.md — Ollama Docker connectivity (OLLAMA_HOST docs)
 - [ ] 03-04-PLAN.md — File types parity (Chat + Clean Logs)
 - [x] 03-05-PLAN.md — RedactPage UX fixes (download fallback, summary affordance)
 
