@@ -246,12 +246,23 @@ export default function RedactPage() {
             <button
               type="button"
               onClick={() => setSummaryExpanded((v) => !v)}
+              aria-expanded={summaryExpanded}
+              aria-controls="redaction-summary-content"
               className="flex w-full items-center justify-between px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-100"
             >
               Redaction summary ({Object.keys(mapping).length} changes)
+              <span
+                className={`inline-block transition-transform duration-200 ${summaryExpanded ? "rotate-180" : ""}`}
+                aria-hidden
+              >
+                ▼
+              </span>
             </button>
             {summaryExpanded && (
-              <dl className="border-t border-gray-200 px-4 py-3 text-sm">
+              <dl
+                id="redaction-summary-content"
+                className="border-t border-gray-200 bg-gray-100 px-4 py-3 text-sm"
+              >
                 {Object.entries(countPiiByType(mapping))
                   .filter(([, n]) => n > 0)
                   .map(([type, n]) => (
