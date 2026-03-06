@@ -43,10 +43,13 @@ Plans:
   3. API leaves IPs from elastic-package GeoIP list unchanged; replaces other public IPs with IPs from that list
   4. API redacts hostnames and usernames in paths via LLM with consistent mapping (same value → same replacement)
   5. Same PII value always maps to same dummy replacement throughout entire response
-**Plans**: TBD
+**Plans:** 2/4 plans executed
 
 Plans:
-- TBD
+- [ ] 02-01-PLAN.md — GeoIP + Schemas + Test scaffolding (DET-03, DET-04)
+- [ ] 02-02-PLAN.md — Regex detection service (DET-01, DET-02, DET-03, DET-04, DET-06)
+- [ ] 02-03-PLAN.md — Ollama chat + LLM service (DET-05)
+- [ ] 02-04-PLAN.md — Redaction router + pipeline (integration)
 
 ### Phase 3: Redaction Frontend
 **Goal**: Users can provide log input, see redacted preview with highlights, and obtain output (download, copy, summary)
@@ -71,5 +74,5 @@ Phases execute in numeric order: 1 → 2 → 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Multi-Page Navigation | 2/2 | Complete | 01-01, 01-02 |
-| 2. Redaction Backend | 0/0 | Not started | - |
+| 2. Redaction Backend | 2/4 | In Progress|  |
 | 3. Redaction Frontend | 0/0 | Not started | - |
