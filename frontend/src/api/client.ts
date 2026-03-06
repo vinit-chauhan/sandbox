@@ -92,3 +92,57 @@ export async function streamChat(
 
   return { ttft, total: performance.now() - start };
 }
+
+export async function streamRedact(
+  text: string,
+  onProgress: (step: string, progress: number) => void,
+  onDone: (result: {
+    redacted_text: string;
+    mapping: Record<string, string>;
+    warning?: string | null;
+  }) => void,
+): Promise<void> {
+  const res = await fetch("/api/redact", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+
+  if (!res.ok) throw new Error(`Redact failed: ${res.statusText}`);
+  if (!res.body) throw new Error("No response body");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data: ")) continue;
+      const payload = trimmed.slice(6);
+      try {
+        const parsed = JSON.parse(payload);
+        if (parsed.step === "done") {
+          onDone({
+            redacted_text: parsed.redacted_text ?? "",
+            mapping: parsed.mapping ?? {},
+            warning: parsed.warning ?? null,
+          });
+          return;
+        }
+        if (parsed.step != null && parsed.progress != null) {
+          onProgress(parsed.step, parsed.progress);
+        }
+      } catch {
+        // skip malformed lines
+      }
+    }
+  }
+}
