@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Multi-Page Navigation** - Routing, layout, nav between Chat and Redact Logs; state preservation; extensible structure
 - [x] **Phase 2: Redaction Backend** - FastAPI redaction API with regex + LLM, IP rules, GeoIP allowlist, consistent mapping (completed 2026-03-06)
-- [ ] **Phase 3: Redaction Frontend** - Upload, paste, preview with highlights, download, copy, redaction summary
+- [x] **Phase 3: Redaction Frontend** - Upload, paste, preview with highlights, download, copy, redaction summary (completed 2026-03-06)
 
 ## Phase Details
 
@@ -61,11 +61,11 @@ Plans:
   3. User sees preview of redacted output with changes visually highlighted before downloading
   4. User can download the redacted file
   5. User can copy redacted text to clipboard and see redaction summary (count by PII type)
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 03-01-PLAN.md — streamRedact API + Clean Logs terminology (foundation)
-- [ ] 03-02-PLAN.md — RedactPage full UI (input, preview, toolbar, summary)
+- [x] 03-02-PLAN.md — RedactPage full UI (input, preview, toolbar, summary)
 
 ## Progress
 
@@ -76,4 +76,4 @@ Phases execute in numeric order: 1 → 2 → 3
 |-------|----------------|--------|-----------|
 | 1. Multi-Page Navigation | 2/2 | Complete | 01-01, 01-02 |
 | 2. Redaction Backend | 4/4 | Complete   | 2026-03-06 |
-| 3. Redaction Frontend | 1/2 | In Progress|  |
+| 3. Redaction Frontend | 2/2 | Complete   | 2026-03-06 |

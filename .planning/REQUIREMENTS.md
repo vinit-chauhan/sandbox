@@ -15,8 +15,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Input
 
-- [ ] **INP-01**: User can upload any text-based file (.log, .txt, .json, .csv, .yml, .conf, etc.) for redaction
-- [ ] **INP-02**: User can paste log text directly into a text area for redaction
+- [x] **INP-01**: User can upload any text-based file (.log, .txt, .json, .csv, .yml, .conf, etc.) for redaction
+- [x] **INP-02**: User can paste log text directly into a text area for redaction
 
 ### Detection
 
@@ -29,10 +29,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Output
 
-- [ ] **OUT-01**: User sees a preview of the redacted output with changes visually highlighted before downloading
-- [ ] **OUT-02**: User can download the redacted file
-- [ ] **OUT-03**: User can copy redacted text to clipboard
-- [ ] **OUT-04**: User sees a redaction summary showing count of changes by PII type
+- [x] **OUT-01**: User sees a preview of the redacted output with changes visually highlighted before downloading
+- [x] **OUT-02**: User can download the redacted file
+- [x] **OUT-03**: User can copy redacted text to clipboard
+- [x] **OUT-04**: User sees a redaction summary showing count of changes by PII type
 
 ## v2 Requirements
 
@@ -68,18 +68,18 @@ Deferred to future release. Tracked but not in current roadmap.
 | NAV-01 | Phase 1 | Pending |
 | NAV-02 | Phase 1 | Complete (01-01) |
 | NAV-03 | Phase 1 | Pending |
-| INP-01 | Phase 3 | Pending |
-| INP-02 | Phase 3 | Pending |
+| INP-01 | Phase 3 | Complete |
+| INP-02 | Phase 3 | Complete |
 | DET-01 | Phase 2 | Complete |
 | DET-02 | Phase 2 | Complete |
 | DET-03 | Phase 2 | Complete |
 | DET-04 | Phase 2 | Complete |
 | DET-05 | Phase 2 | Complete |
 | DET-06 | Phase 2 | Complete |
-| OUT-01 | Phase 3 | Pending |
-| OUT-02 | Phase 3 | Pending |
-| OUT-03 | Phase 3 | Pending |
-| OUT-04 | Phase 3 | Pending |
+| OUT-01 | Phase 3 | Complete |
+| OUT-02 | Phase 3 | Complete |
+| OUT-03 | Phase 3 | Complete |
+| OUT-04 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 15 total
