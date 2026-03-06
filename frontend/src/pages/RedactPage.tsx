@@ -52,6 +52,33 @@ function buildHighlightSpans(
   return filtered.sort((a, b) => a.start - b.start);
 }
 
+type PiiType = "email" | "ip" | "hostname" | "username" | "path" | "other";
+
+function inferPiiType(repl: string): PiiType {
+  if (/user-\d+@example\.com/.test(repl)) return "email";
+  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(repl)) return "ip";
+  if (/^[0-9a-f:]+$/i.test(repl) && repl.includes(":")) return "ip";
+  if (/^(server|node|worker)-[a-z0-9-]+\.example\.com$/i.test(repl)) return "hostname";
+  if (/^[a-z]+\.[a-z]+$/i.test(repl) && repl.length < 30) return "username";
+  if (repl.includes("/")) return "path";
+  return "other";
+}
+
+function countPiiByType(mapping: Record<string, string>): Record<PiiType, number> {
+  const counts: Record<PiiType, number> = {
+    email: 0,
+    ip: 0,
+    hostname: 0,
+    username: 0,
+    path: 0,
+    other: 0,
+  };
+  for (const repl of Object.values(mapping)) {
+    counts[inferPiiType(repl)]++;
+  }
+  return counts;
+}
+
 function renderHighlightedPreview(text: string, mapping: Record<string, string>) {
   const spans = buildHighlightSpans(text, mapping);
   if (spans.length === 0) return text;
@@ -91,6 +118,7 @@ export default function RedactPage() {
   const [warning, setWarning] = useState<string | null>(null);
   const [originalFilename, setOriginalFilename] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: DragEvent) => {
@@ -158,6 +186,7 @@ export default function RedactPage() {
     setWarning(null);
     setStatus(null);
     setCopied(false);
+    setSummaryExpanded(false);
   };
 
   const handleDownload = () => {
@@ -213,6 +242,27 @@ export default function RedactPage() {
               {warning}
             </div>
           )}
+          <div className="rounded border border-gray-200 bg-gray-50">
+            <button
+              type="button"
+              onClick={() => setSummaryExpanded((v) => !v)}
+              className="flex w-full items-center justify-between px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-100"
+            >
+              Redaction summary ({Object.keys(mapping).length} changes)
+            </button>
+            {summaryExpanded && (
+              <dl className="border-t border-gray-200 px-4 py-3 text-sm">
+                {Object.entries(countPiiByType(mapping))
+                  .filter(([, n]) => n > 0)
+                  .map(([type, n]) => (
+                    <div key={type} className="flex gap-2">
+                      <dt className="font-medium capitalize text-gray-600">{type}:</dt>
+                      <dd>{n}</dd>
+                    </div>
+                  ))}
+              </dl>
+            )}
+          </div>
           <pre className="whitespace-pre-wrap rounded border border-gray-200 bg-gray-50 p-4 text-sm">
             {renderHighlightedPreview(redactedText, mapping)}
           </pre>
