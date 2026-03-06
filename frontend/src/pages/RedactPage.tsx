@@ -194,7 +194,7 @@ export default function RedactPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = downloadFilename(originalFilename ?? "output.clean.txt");
+    a.download = downloadFilename(originalFilename ?? "output.txt");
     a.click();
     URL.revokeObjectURL(url);
   };
