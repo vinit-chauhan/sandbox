@@ -60,7 +60,7 @@ Each task was committed atomically:
 1. **Task 1: Document OLLAMA_HOST in README** - `0b813de` (docs)
 2. **Task 2: Add docker-compose comment** - `67175d1` (docs)
 
-**Plan metadata:** (pending final docs commit)
+**Plan metadata:** `9fc8c02` (docs: complete plan), `718117f` (ROADMAP update)
 
 ## Files Created/Modified
 
@@ -99,6 +99,11 @@ None - documentation only. Users who follow the README will know to set OLLAMA_H
 
 - UAT Test 2 (Paste text and clean — LLM detection works) is unblocked when user sets OLLAMA_HOST before starting Ollama
 - 03-04 and 03-05 plans remain for gap closure
+
+## Self-Check: PASSED
+
+- FOUND: .planning/phases/03-redaction-frontend/03-03-SUMMARY.md
+- FOUND: 0b813de, 67175d1, 9fc8c02, 718117f in git log
 
 ---
 *Phase: 03-redaction-frontend*

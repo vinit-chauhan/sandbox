@@ -12,7 +12,8 @@ router = APIRouter(prefix="/api")
 UPLOAD_DIR = Path("/app/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".md", ".log", ".json", ".csv", ".yml", ".yaml"}
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt",
+                      ".md", ".log", ".json", ".csv", ".yml", ".yaml"}
 
 
 def _sanitize_id(filename: str) -> str:

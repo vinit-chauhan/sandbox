@@ -15,7 +15,7 @@ services:
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       CHROMA_HOST: chromadb
       CHROMA_PORT: "8000"
-      MODEL_NAME: qwen3.5:4b
+      MODEL_NAME: qwen3.5:0.8b
     volumes:
       - uploads:/app/uploads
 

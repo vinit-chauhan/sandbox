@@ -59,7 +59,7 @@ Each task was committed atomically:
 
 1. **Task 1: Extend FileUpload and backend for text file types** - `6cbabee` (feat)
 
-**Plan metadata:** `00bbeaf` (docs: complete plan)
+**Plan metadata:** `182ccff` (docs: complete plan)
 
 ## Files Created/Modified
 

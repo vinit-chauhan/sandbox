@@ -58,13 +58,16 @@ function inferPiiType(repl: string): PiiType {
   if (/user-\d+@example\.com/.test(repl)) return "email";
   if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(repl)) return "ip";
   if (/^[0-9a-f:]+$/i.test(repl) && repl.includes(":")) return "ip";
-  if (/^(server|node|worker)-[a-z0-9-]+\.example\.com$/i.test(repl)) return "hostname";
+  if (/^(server|node|worker)-[a-z0-9-]+\.example\.com$/i.test(repl))
+    return "hostname";
   if (/^[a-z]+\.[a-z]+$/i.test(repl) && repl.length < 30) return "username";
   if (repl.includes("/")) return "path";
   return "other";
 }
 
-function countPiiByType(mapping: Record<string, string>): Record<PiiType, number> {
+function countPiiByType(
+  mapping: Record<string, string>,
+): Record<PiiType, number> {
   const counts: Record<PiiType, number> = {
     email: 0,
     ip: 0,
@@ -79,16 +82,31 @@ function countPiiByType(mapping: Record<string, string>): Record<PiiType, number
   return counts;
 }
 
-function renderHighlightedPreview(text: string, mapping: Record<string, string>) {
+function renderHighlightedPreview(
+  text: string,
+  mapping: Record<string, string>,
+) {
   const spans = buildHighlightSpans(text, mapping);
   if (spans.length === 0) return text;
-  const segments: Array<{ type: "plain" | "mark"; start: number; end: number; repl?: string; origs?: string[] }> = [];
+  const segments: Array<{
+    type: "plain" | "mark";
+    start: number;
+    end: number;
+    repl?: string;
+    origs?: string[];
+  }> = [];
   let pos = 0;
   for (const s of spans) {
     if (s.start > pos) {
       segments.push({ type: "plain", start: pos, end: s.start });
     }
-    segments.push({ type: "mark", start: s.start, end: s.end, repl: s.repl, origs: s.origs });
+    segments.push({
+      type: "mark",
+      start: s.start,
+      end: s.end,
+      repl: s.repl,
+      origs: s.origs,
+    });
     pos = s.end;
   }
   if (pos < text.length) {
@@ -194,7 +212,7 @@ export default function RedactPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = downloadFilename(originalFilename ?? "output.txt");
+    a.download = downloadFilename(originalFilename ?? "output.clean.txt");
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -246,28 +264,19 @@ export default function RedactPage() {
             <button
               type="button"
               onClick={() => setSummaryExpanded((v) => !v)}
-              aria-expanded={summaryExpanded}
-              aria-controls="redaction-summary-content"
               className="flex w-full items-center justify-between px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-100"
             >
               Redaction summary ({Object.keys(mapping).length} changes)
-              <span
-                className={`inline-block transition-transform duration-200 ${summaryExpanded ? "rotate-180" : ""}`}
-                aria-hidden
-              >
-                ▼
-              </span>
             </button>
             {summaryExpanded && (
-              <dl
-                id="redaction-summary-content"
-                className="border-t border-gray-200 bg-gray-100 px-4 py-3 text-sm"
-              >
+              <dl className="border-t border-gray-200 px-4 py-3 text-sm">
                 {Object.entries(countPiiByType(mapping))
                   .filter(([, n]) => n > 0)
                   .map(([type, n]) => (
                     <div key={type} className="flex gap-2">
-                      <dt className="font-medium capitalize text-gray-600">{type}:</dt>
+                      <dt className="font-medium capitalize text-gray-600">
+                        {type}:
+                      </dt>
                       <dd>{n}</dd>
                     </div>
                   ))}
@@ -305,7 +314,9 @@ export default function RedactPage() {
             aria-label="Log text input"
           />
           {!inputText && (
-            <p className="text-sm text-gray-500">Drop a file or paste to get started</p>
+            <p className="text-sm text-gray-500">
+              Drop a file or paste to get started
+            </p>
           )}
         </div>
         <input
