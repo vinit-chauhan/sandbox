@@ -61,13 +61,13 @@ Plans:
   3. User sees preview of redacted output with changes visually highlighted before downloading
   4. User can download the redacted file
   5. User can copy redacted text to clipboard and see redaction summary (count by PII type)
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 03-01-PLAN.md — streamRedact API + Clean Logs terminology (foundation)
 - [x] 03-02-PLAN.md — RedactPage full UI (input, preview, toolbar, summary)
 - [x] 03-03-PLAN.md — Ollama Docker connectivity (OLLAMA_HOST docs)
-- [ ] 03-04-PLAN.md — File types parity (Chat + Clean Logs)
+- [x] 03-04-PLAN.md — File types parity (Chat + Clean Logs)
 - [x] 03-05-PLAN.md — RedactPage UX fixes (download fallback, summary affordance)
 
 ## Progress
@@ -79,4 +79,4 @@ Phases execute in numeric order: 1 → 2 → 3
 |-------|----------------|--------|-----------|
 | 1. Multi-Page Navigation | 2/2 | Complete | 01-01, 01-02 |
 | 2. Redaction Backend | 4/4 | Complete   | 2026-03-06 |
-| 3. Redaction Frontend | 4/5 | In Progress|  |
+| 3. Redaction Frontend | 5/5 | Complete   | 2026-03-06 |
