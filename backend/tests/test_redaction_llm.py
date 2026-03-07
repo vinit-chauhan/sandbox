@@ -31,7 +31,7 @@ async def test_llm_extracts_hostnames(mock_provider):
             })
         }
     }
-    mapping = await extract_pii_mapping("Log from prod-server-01", {}, "test-model")
+    mapping = await extract_pii_mapping("Log from prod-server-01", "test-model")
     assert "prod-server-01.internal" in mapping
     assert mapping["prod-server-01.internal"] == "server-alpha.example.com"
     assert "db-master.example.org" in mapping
@@ -49,7 +49,7 @@ async def test_llm_extracts_usernames(mock_provider):
             })
         }
     }
-    mapping = await extract_pii_mapping("User jsmith logged in", {}, "test-model")
+    mapping = await extract_pii_mapping("User jsmith logged in", "test-model")
     assert "jsmith" in mapping
     assert mapping["jsmith"] == "john.doe"
     assert "a.smith" in mapping
@@ -67,7 +67,7 @@ async def test_llm_path_replacement(mock_provider):
             })
         }
     }
-    mapping = await extract_pii_mapping("Log path /home/jsmith/data/logs", {}, "test-model")
+    mapping = await extract_pii_mapping("Log path /home/jsmith/data/logs", "test-model")
     assert "jsmith" in mapping
     assert mapping["jsmith"] == "john.doe"
     assert "/home/jsmith/data/logs" in mapping
@@ -85,13 +85,14 @@ async def test_consistent_mapping(mock_provider):
             })
         }
     }
-    mapping = await extract_pii_mapping("text", {}, "test-model")
+    mapping = await extract_pii_mapping("text", "test-model")
     assert mapping["server-a"] == "server-alpha.example.com"
     assert len(mapping) == 1
 
 
 @pytest.mark.asyncio
-async def test_merge_with_existing(mock_provider):
+async def test_llm_standalone_mapping(mock_provider):
+    """LLM produces its own mapping without any existing input."""
     mock_provider.chat.return_value = {
         "message": {
             "content": json.dumps({
@@ -101,10 +102,7 @@ async def test_merge_with_existing(mock_provider):
             })
         }
     }
-    existing = {"user@example.com": "user-001@example.com"}
-    mapping = await extract_pii_mapping("text", existing, "test-model")
-    assert "user@example.com" in mapping
-    assert mapping["user@example.com"] == "user-001@example.com"
+    mapping = await extract_pii_mapping("text", "test-model")
     assert "db.internal" in mapping
     assert mapping["db.internal"] == "server-alpha.example.com"
 
@@ -114,9 +112,8 @@ async def test_invalid_json_fallback(mock_provider):
     mock_provider.chat.return_value = {
         "message": {"content": "not valid json {{"}
     }
-    existing = {"already": "mapped"}
-    mapping = await extract_pii_mapping("text", existing, "test-model")
-    assert mapping == {"already": "mapped"}
+    mapping = await extract_pii_mapping("text", "test-model")
+    assert mapping == {}
 
 
 @pytest.mark.asyncio
@@ -130,7 +127,7 @@ async def test_path_with_Users_prefix(mock_provider):
             })
         }
     }
-    mapping = await extract_pii_mapping("Path /Users/alice.smith/projects/log.txt", {}, "test-model")
+    mapping = await extract_pii_mapping("Path /Users/alice.smith/projects/log.txt", "test-model")
     assert "alice.smith" in mapping
     assert "/Users/alice.smith/projects/log.txt" in mapping
     assert mapping["/Users/alice.smith/projects/log.txt"] == "/Users/john.doe/projects/log.txt"

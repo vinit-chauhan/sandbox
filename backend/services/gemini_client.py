@@ -62,13 +62,19 @@ class GeminiProvider(LLMProvider):
     def name(self) -> str:
         return "gemini"
 
+    def _resolve_model(self, model: str) -> str:
+        """Always use GEMINI_MODEL — ignore Ollama-style model names."""
+        if not model or ":" in model:
+            return GEMINI_MODEL
+        return model
+
     async def chat(
         self,
         messages: list[dict],
         model: str,
         format_schema: dict | None = None,
     ) -> dict:
-        model_name = model or GEMINI_MODEL
+        model_name = self._resolve_model(model)
         system_instruction, contents = _messages_to_gemini(messages)
 
         config_kwargs: dict = {}
@@ -76,7 +82,7 @@ class GeminiProvider(LLMProvider):
             config_kwargs["system_instruction"] = system_instruction
         if format_schema is not None:
             config_kwargs["response_mime_type"] = "application/json"
-            config_kwargs["response_json_schema"] = format_schema
+            config_kwargs["response_schema"] = format_schema
 
         config = types.GenerateContentConfig(**config_kwargs) if config_kwargs else None
 
@@ -93,7 +99,7 @@ class GeminiProvider(LLMProvider):
     async def stream_chat(
         self, messages: list[dict], model: str
     ) -> AsyncGenerator[str, None]:
-        model_name = model or GEMINI_MODEL
+        model_name = self._resolve_model(model)
         system_instruction, contents = _messages_to_gemini(messages)
 
         config = None
@@ -116,8 +122,9 @@ class GeminiProvider(LLMProvider):
         if not GEMINI_API_KEY:
             return False
         try:
-            models = list(self._client.models.list(config={"page_size": 1}))
-            return len(models) > 0
+            pager = self._client.models.list(config={"page_size": 1})
+            first = next(iter(pager), None)
+            return first is not None
         except Exception:
             logger.warning("Gemini health check failed", exc_info=True)
             return False

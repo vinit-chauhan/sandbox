@@ -95,3 +95,53 @@ def detect_and_build_mapping(
         redacted = redacted.replace(orig, repl)
 
     return redacted, mapping
+
+
+def detect_pii(text: str, geoip_module: Any) -> dict[str, str]:
+    """Detect emails and IPs, return mapping without applying replacements."""
+    mapping: dict[str, str] = {}
+    email_counter = [0]
+
+    def next_email_replacement() -> str:
+        email_counter[0] += 1
+        return f"user-{email_counter[0]:03d}@example.com"
+
+    for m in EMAIL_PATTERN.finditer(text):
+        orig = m.group(0)
+        if orig not in mapping:
+            mapping[orig] = next_email_replacement()
+
+    for m in IPV4_PATTERN.finditer(text):
+        ip_str = m.group(0)
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError:
+            continue
+        if ip.is_private or geoip_module.is_in_allowlist(ip_str):
+            continue
+        if ip_str not in mapping:
+            mapping[ip_str] = geoip_module.pick_replacement(ip_str)
+
+    for m in IPV6_PATTERN.finditer(text):
+        ip_str = m.group(0)
+        if not _valid_ipv6(ip_str):
+            continue
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError:
+            continue
+        if ip.is_private or geoip_module.is_in_allowlist(ip_str):
+            continue
+        if ip_str not in mapping:
+            mapping[ip_str] = geoip_module.pick_replacement(ip_str)
+
+    return mapping
+
+
+def apply_mapping(text: str, mapping: dict[str, str]) -> str:
+    """Apply a replacement mapping to text, longest-first to avoid substring collisions."""
+    items = sorted(mapping.items(), key=lambda x: len(x[0]), reverse=True)
+    result = text
+    for orig, repl in items:
+        result = result.replace(orig, repl)
+    return result

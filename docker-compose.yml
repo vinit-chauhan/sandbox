@@ -21,7 +21,7 @@ services:
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
       CHROMA_HOST: chromadb
       CHROMA_PORT: "8000"
-      MODEL_NAME: ${MODEL_NAME:-qwen3.5:0.8b}
+      MODEL_NAME: ${MODEL_NAME:-qwen3.5:4b}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - uploads:/app/uploads

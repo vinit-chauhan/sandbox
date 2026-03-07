@@ -16,6 +16,7 @@ from services.llm_provider import LLMProvider
 logger = logging.getLogger(__name__)
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+TIMEOUT = os.getenv("OLLAMA_TIMEOUT", 60.0)
 
 
 class OllamaProvider(LLMProvider):
@@ -37,8 +38,9 @@ class OllamaProvider(LLMProvider):
         if format_schema is not None:
             payload["format"] = format_schema
 
-        logger.debug("Ollama chat request: model=%s, msgs=%d", model, len(messages))
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        logger.debug("Ollama chat request: model=%s, msgs=%d",
+                     model, len(messages))
+        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
             response = await client.post(
                 f"{OLLAMA_BASE_URL}/api/chat", json=payload
             )
@@ -55,7 +57,7 @@ class OllamaProvider(LLMProvider):
         self, messages: list[dict], model: str
     ) -> AsyncGenerator[str, None]:
         logger.info("Ollama stream start: model=%s", model)
-        async with httpx.AsyncClient(timeout=None) as client:
+        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
             async with client.stream(
                 "POST",
                 f"{OLLAMA_BASE_URL}/api/chat",
@@ -72,7 +74,7 @@ class OllamaProvider(LLMProvider):
 
     def is_available(self) -> bool:
         try:
-            with httpx.Client(timeout=2.0) as client:
+            with httpx.Client(timeout=TIMEOUT) as client:
                 resp = client.get(f"{OLLAMA_BASE_URL}/api/tags")
                 return resp.status_code == 200
         except Exception:
