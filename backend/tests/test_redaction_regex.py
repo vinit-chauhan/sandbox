@@ -75,6 +75,35 @@ def test_consistent_mapping():
 
 
 @requires_geoip
+def test_phone_number_detection():
+    """Phone numbers are detected and replaced consistently."""
+    text = "Call +1 (555) 123-4567 or 555-987-6543 for support"
+    out, mapping = detect_and_build_mapping(text, geoip)
+    assert "+1 (555) 123-4567" not in out
+    assert "555-987-6543" not in out
+    assert "+1-555-000-0001" in out
+    assert "+1-555-000-0002" in out
+
+
+@requires_geoip
+def test_phone_not_matching_dates():
+    """Dates and timestamps should not be detected as phone numbers."""
+    text = "Event on 2024-01-15 at 12:34:56"
+    out, mapping = detect_and_build_mapping(text, geoip)
+    assert out == text
+    assert len(mapping) == 0
+
+
+@requires_geoip
+def test_phone_not_matching_hashes():
+    """SHA/hex hashes should not be detected as phone numbers."""
+    text = "Commit 41c7e5714a91d17dea111575398d5d1ac merged"
+    out, mapping = detect_and_build_mapping(text, geoip)
+    assert out == text
+    assert len(mapping) == 0
+
+
+@requires_geoip
 def test_ipv6():
     """IPv6 public address replaced; IPv6 from allowlist unchanged."""
     # 2a02:cf40::1 is in allowlist (2a02:cf40::/29)

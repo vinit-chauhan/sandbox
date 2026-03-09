@@ -1,5 +1,6 @@
 """Redaction API: POST /api/redact with SSE streaming, regex + LLM pipeline."""
 
+import asyncio
 import json
 import logging
 import os
@@ -24,6 +25,12 @@ MODEL_NAME = os.getenv("MODEL_NAME", "qwen2.5:7b")
 @router.post("/redact")
 async def redact(request: RedactRequest):
     """Stream SSE events: progress updates, then final redacted result with mapping."""
+
+    chunk_events: asyncio.Queue[dict] = asyncio.Queue()
+
+    def _on_chunk_progress(completed: int, total: int):
+        pct = 50 + int((completed / total) * 45)
+        chunk_events.put_nowait({"step": "llm", "progress": pct, "chunk": completed, "total_chunks": total})
 
     async def event_stream():
         original_text = request.text
@@ -50,9 +57,26 @@ async def redact(request: RedactRequest):
             yield f"data: {json.dumps({'step': 'llm', 'progress': 50})}\n\n"
 
             try:
-                llm_mapping = await extract_pii_mapping(
-                    original_text, model=MODEL_NAME
+                task = asyncio.create_task(
+                    extract_pii_mapping(
+                        original_text, model=MODEL_NAME,
+                        on_chunk_progress=_on_chunk_progress,
+                    )
                 )
+
+                while not task.done():
+                    try:
+                        event = chunk_events.get_nowait()
+                        yield f"data: {json.dumps(event)}\n\n"
+                    except asyncio.QueueEmpty:
+                        await asyncio.sleep(0.2)
+
+                llm_mapping = task.result()
+
+                while not chunk_events.empty():
+                    event = chunk_events.get_nowait()
+                    yield f"data: {json.dumps(event)}\n\n"
+
                 logger.info("LLM detection found %d PII items", len(llm_mapping))
             except (httpx.HTTPError, httpx.RequestError, Exception) as exc:
                 logger.error("LLM redaction failed: %s", exc, exc_info=True)

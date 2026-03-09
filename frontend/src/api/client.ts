@@ -95,7 +95,7 @@ export async function streamChat(
 
 export async function streamRedact(
   text: string,
-  onProgress: (step: string, progress: number) => void,
+  onProgress: (step: string, progress: number, chunk?: number, totalChunks?: number) => void,
   onDone: (result: {
     redacted_text: string;
     mapping: Record<string, string>;
@@ -138,7 +138,7 @@ export async function streamRedact(
           return;
         }
         if (parsed.step != null && parsed.progress != null) {
-          onProgress(parsed.step, parsed.progress);
+          onProgress(parsed.step, parsed.progress, parsed.chunk, parsed.total_chunks);
         }
       } catch {
         // skip malformed lines

@@ -5,7 +5,7 @@ import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from services.redaction_llm import extract_pii_mapping
+from services.redaction_llm import extract_pii_mapping, CHUNK_LINES
 
 
 pytest_plugins = ("pytest_asyncio",)
@@ -131,3 +131,42 @@ async def test_path_with_Users_prefix(mock_provider):
     assert "alice.smith" in mapping
     assert "/Users/alice.smith/projects/log.txt" in mapping
     assert mapping["/Users/alice.smith/projects/log.txt"] == "/Users/john.doe/projects/log.txt"
+
+
+@pytest.mark.asyncio
+async def test_chunking_merges_across_chunks(mock_provider):
+    """PII found in different chunks gets deduplicated and consistently mapped."""
+    chunk1_response = {
+        "message": {
+            "content": json.dumps({
+                "hostnames": ["web-01.internal"],
+                "usernames": ["jsmith"],
+                "paths_with_usernames": [],
+            })
+        }
+    }
+    chunk2_response = {
+        "message": {
+            "content": json.dumps({
+                "hostnames": ["web-01.internal", "db-02.internal"],
+                "usernames": [],
+                "paths_with_usernames": [],
+            })
+        }
+    }
+    mock_provider.chat.side_effect = [chunk1_response, chunk2_response]
+
+    lines = [f"log line {i} on web-01.internal by jsmith" for i in range(CHUNK_LINES + 10)]
+    text = "\n".join(lines)
+
+    progress_calls = []
+    mapping = await extract_pii_mapping(text, "test-model", on_chunk_progress=lambda c, t: progress_calls.append((c, t)))
+
+    assert mock_provider.chat.call_count == 2
+    assert "web-01.internal" in mapping
+    assert "db-02.internal" in mapping
+    assert "jsmith" in mapping
+    assert mapping["web-01.internal"] == "server-alpha.example.com"
+    assert mapping["db-02.internal"] == "node-beta.example.com"
+    assert len(progress_calls) == 2
+    assert progress_calls == [(1, 2), (2, 2)]

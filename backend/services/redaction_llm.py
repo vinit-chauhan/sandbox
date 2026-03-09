@@ -1,12 +1,13 @@
 """
 LLM-based PII extraction for redaction. Extracts hostnames, usernames, and paths
 containing usernames from log text using the configured LLM provider with
-structured JSON format.
+structured JSON format. Large inputs are automatically chunked.
 """
 
 import json
 import logging
 import os
+from typing import Callable
 
 from services.llm_provider import get_provider
 
@@ -31,6 +32,7 @@ HOSTNAME_REPLACEMENTS = [
 USERNAME_REPLACEMENTS = ["john.doe", "alice.smith", "bob.jones"]
 
 MAX_RETRIES = 2
+CHUNK_LINES = 80
 
 SYSTEM_PROMPT = """\
 You extract PII from log text. Return ONLY a JSON object with three arrays:
@@ -41,12 +43,8 @@ You extract PII from log text. Return ONLY a JSON object with three arrays:
 If a category has nothing, use an empty array [].
 Do NOT include IPs or emails (those are handled separately)."""
 
-FEW_SHOT_EXAMPLE = """\
-Log text:
-2024-01-15 ERROR on web-prod-03.internal: user alice.wu failed auth at /home/alice.wu/app/config
-
-Output:
-{"hostnames": ["web-prod-03.internal"], "usernames": ["alice.wu"], "paths_with_usernames": ["/home/alice.wu/app/config"]}"""
+FEW_SHOT_EXAMPLE_INPUT = "2024-01-15 ERROR on web-prod-03.internal: user alice.wu failed auth at /home/alice.wu/app/config"
+FEW_SHOT_EXAMPLE_OUTPUT = '{"hostnames": ["web-prod-03.internal"], "usernames": ["alice.wu"], "paths_with_usernames": ["/home/alice.wu/app/config"]}'
 
 
 def _next_hostname(index: int) -> str:
@@ -105,24 +103,16 @@ def _build_mapping_from_parsed(parsed: dict) -> dict[str, str]:
     return mapping
 
 
-async def extract_pii_mapping(
-    text: str,
-    model: str | None = None,
-) -> dict[str, str]:
-    """
-    Extract PII from text using LLM, assign natural-looking replacements.
-    Returns a standalone mapping (caller merges with regex mapping).
-    Retries once on parse failure.
-    """
-    model = model or os.getenv("MODEL_NAME", "qwen2.5:7b")
-
+async def _extract_pii_raw(
+    text: str, model: str
+) -> dict:
+    """Send a single chunk to the LLM and return raw parsed PII dict. Retries on failure."""
     provider = get_provider()
-    logger.info("PII extraction: provider=%s model=%s", provider.name, model)
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": f"Log text:\n{FEW_SHOT_EXAMPLE.split('Log text:')[1].split('Output:')[0].strip()}\n"},
-        {"role": "assistant", "content": FEW_SHOT_EXAMPLE.split("Output:\n")[1].strip()},
+        {"role": "user", "content": f"Log text:\n{FEW_SHOT_EXAMPLE_INPUT}\n"},
+        {"role": "assistant", "content": FEW_SHOT_EXAMPLE_OUTPUT},
         {"role": "user", "content": f"Log text:\n{text}"},
     ]
 
@@ -145,9 +135,7 @@ async def extract_pii_mapping(
                 logger.warning("LLM returned non-object JSON (attempt %d): %s", attempt, type(parsed).__name__)
                 continue
 
-            mapping = _build_mapping_from_parsed(parsed)
-            logger.info("PII extraction complete: %d mappings (attempt %d)", len(mapping), attempt)
-            return mapping
+            return parsed
 
         except json.JSONDecodeError as exc:
             logger.warning(
@@ -158,5 +146,54 @@ async def extract_pii_mapping(
             logger.error("LLM call failed (attempt %d/%d): %s", attempt, MAX_RETRIES, exc, exc_info=True)
             break
 
-    logger.warning("PII extraction failed after %d attempts, returning empty mapping", MAX_RETRIES)
-    return {}
+    return {"hostnames": [], "usernames": [], "paths_with_usernames": []}
+
+
+async def extract_pii_mapping(
+    text: str,
+    model: str | None = None,
+    on_chunk_progress: Callable[[int, int], None] | None = None,
+) -> dict[str, str]:
+    """
+    Extract PII from text using LLM, assign natural-looking replacements.
+    Large inputs are split into chunks of ~CHUNK_LINES lines each.
+    on_chunk_progress(completed, total) is called after each chunk.
+    """
+    model = model or os.getenv("MODEL_NAME", "qwen2.5:7b")
+    provider = get_provider()
+
+    lines = text.splitlines(keepends=True)
+    chunks: list[str] = []
+    for i in range(0, len(lines), CHUNK_LINES):
+        chunks.append("".join(lines[i : i + CHUNK_LINES]))
+
+    logger.info(
+        "PII extraction: provider=%s model=%s lines=%d chunks=%d",
+        provider.name, model, len(lines), len(chunks),
+    )
+
+    all_hostnames: list[str] = []
+    all_usernames: list[str] = []
+    all_paths: list[str] = []
+
+    for idx, chunk in enumerate(chunks):
+        parsed = await _extract_pii_raw(chunk, model)
+        all_hostnames.extend(parsed.get("hostnames") or [])
+        all_usernames.extend(parsed.get("usernames") or [])
+        all_paths.extend(parsed.get("paths_with_usernames") or [])
+        logger.info("Chunk %d/%d done: %d hostnames, %d usernames, %d paths",
+                     idx + 1, len(chunks),
+                     len(parsed.get("hostnames") or []),
+                     len(parsed.get("usernames") or []),
+                     len(parsed.get("paths_with_usernames") or []))
+        if on_chunk_progress:
+            on_chunk_progress(idx + 1, len(chunks))
+
+    merged = {
+        "hostnames": all_hostnames,
+        "usernames": all_usernames,
+        "paths_with_usernames": all_paths,
+    }
+    mapping = _build_mapping_from_parsed(merged)
+    logger.info("PII extraction complete: %d total mappings from %d chunks", len(mapping), len(chunks))
+    return mapping

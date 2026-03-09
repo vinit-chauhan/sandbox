@@ -16,7 +16,7 @@ from services.llm_provider import LLMProvider
 logger = logging.getLogger(__name__)
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-TIMEOUT = os.getenv("OLLAMA_TIMEOUT", 60.0)
+TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "120"))
 
 
 class OllamaProvider(LLMProvider):

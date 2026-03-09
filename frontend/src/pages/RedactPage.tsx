@@ -52,10 +52,11 @@ function buildHighlightSpans(
   return filtered.sort((a, b) => a.start - b.start);
 }
 
-type PiiType = "email" | "ip" | "hostname" | "username" | "path" | "other";
+type PiiType = "email" | "phone" | "ip" | "hostname" | "username" | "path" | "other";
 
 function inferPiiType(repl: string): PiiType {
   if (/user-\d+@example\.com/.test(repl)) return "email";
+  if (/^\+1-555-000-\d{4}$/.test(repl)) return "phone";
   if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(repl)) return "ip";
   if (/^[0-9a-f:]+$/i.test(repl) && repl.includes(":")) return "ip";
   if (/^(server|node|worker)-[a-z0-9-]+\.example\.com$/i.test(repl))
@@ -70,6 +71,7 @@ function countPiiByType(
 ): Record<PiiType, number> {
   const counts: Record<PiiType, number> = {
     email: 0,
+    phone: 0,
     ip: 0,
     hostname: 0,
     username: 0,
@@ -137,6 +139,7 @@ export default function RedactPage() {
   const [originalFilename, setOriginalFilename] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const [elapsedMs, setElapsedMs] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: DragEvent) => {
@@ -178,12 +181,18 @@ export default function RedactPage() {
   const handleClean = async () => {
     if (!inputText.trim()) return;
     setError(null);
+    setElapsedMs(null);
     setStatus("Cleaning... 0%");
+    const startTime = performance.now();
     try {
       await streamRedact(
         inputText,
-        (step, progress) => setStatus(`Cleaning... ${step} ${progress}%`),
+        (step, progress, chunk, totalChunks) => {
+          const chunkInfo = totalChunks && totalChunks > 1 ? ` (chunk ${chunk}/${totalChunks})` : "";
+          setStatus(`Cleaning... ${step} ${progress}%${chunkInfo}`);
+        },
         (result) => {
+          setElapsedMs(Math.round(performance.now() - startTime));
           setRedactedText(result.redacted_text);
           setMapping(result.mapping ?? {});
           setWarning(result.warning ?? null);
@@ -205,6 +214,7 @@ export default function RedactPage() {
     setStatus(null);
     setCopied(false);
     setSummaryExpanded(false);
+    setElapsedMs(null);
   };
 
   const handleDownload = () => {
@@ -283,6 +293,14 @@ export default function RedactPage() {
               </dl>
             )}
           </div>
+          {elapsedMs !== null && (
+            <p className="text-xs text-gray-400">
+              Completed in{" "}
+              {elapsedMs >= 1000
+                ? `${(elapsedMs / 1000).toFixed(1)}s`
+                : `${elapsedMs}ms`}
+            </p>
+          )}
           <pre className="whitespace-pre-wrap rounded border border-gray-200 bg-gray-50 p-4 text-sm">
             {renderHighlightedPreview(redactedText, mapping)}
           </pre>
