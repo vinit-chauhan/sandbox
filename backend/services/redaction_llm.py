@@ -36,15 +36,20 @@ CHUNK_LINES = 80
 
 SYSTEM_PROMPT = """\
 You extract PII from log text. Return ONLY a JSON object with three arrays:
-- hostnames: server names, FQDNs (e.g. "prod-db.acme.com")
-- usernames: login names (e.g. "jsmith")
+- hostnames: server names, FQDNs, device names (e.g. "prod-db.acme.com")
+- usernames: login names, user_name values, account names (e.g. "jsmith", "MSC.Dept")
 - paths_with_usernames: file paths that contain a username (e.g. "/home/jsmith/logs")
 
-If a category has nothing, use an empty array [].
-Do NOT include IPs or emails (those are handled separately)."""
+Logs may be in any format: syslog, key=value pairs, JSON, etc.
+Look for fields like user_name=, user=, account=, login=, hostname=, device_id=, etc.
+Always return the JSON object even if a category is empty (use []).
+Do NOT include IPs or emails (those are handled separately).
+You MUST respond with ONLY a JSON object, no other text."""
 
-FEW_SHOT_EXAMPLE_INPUT = "2024-01-15 ERROR on web-prod-03.internal: user alice.wu failed auth at /home/alice.wu/app/config"
-FEW_SHOT_EXAMPLE_OUTPUT = '{"hostnames": ["web-prod-03.internal"], "usernames": ["alice.wu"], "paths_with_usernames": ["/home/alice.wu/app/config"]}'
+FEW_SHOT_EXAMPLE_INPUT = """\
+2024-01-15 ERROR on web-prod-03.internal: user alice.wu failed auth at /home/alice.wu/app/config
+<189>date=2025-10-13 time=14:02:50 device_id=FW123 user_name="admin.ops" http_host="lb-prod.corp.local\""""
+FEW_SHOT_EXAMPLE_OUTPUT = '{"hostnames": ["web-prod-03.internal", "lb-prod.corp.local"], "usernames": ["alice.wu", "admin.ops"], "paths_with_usernames": ["/home/alice.wu/app/config"]}'
 
 
 def _next_hostname(index: int) -> str:
@@ -125,11 +130,26 @@ async def _extract_pii_raw(
             content = response.get("message", {}).get("content", "")
             logger.debug("LLM response (attempt %d): %.500s", attempt, content)
 
-            if not content:
+            if not content or not content.strip():
                 logger.warning("Empty LLM response (attempt %d)", attempt)
                 continue
 
-            parsed = json.loads(content)
+            # Strip markdown fences (```json ... ```) that some models wrap around JSON
+            stripped = content.strip()
+            if stripped.startswith("```"):
+                stripped = stripped.split("\n", 1)[-1]
+                if stripped.endswith("```"):
+                    stripped = stripped[:-3]
+                content = stripped.strip()
+
+            # raw_decode parses the first JSON value and ignores trailing data
+            # (e.g. Llama EOS tokens, repeated outputs)
+            decoder = json.JSONDecoder()
+            start = content.find("{")
+            if start == -1:
+                logger.warning("No JSON object in response (attempt %d): %.300s", attempt, content)
+                continue
+            parsed, _ = decoder.raw_decode(content, start)
 
             if not isinstance(parsed, dict):
                 logger.warning("LLM returned non-object JSON (attempt %d): %s", attempt, type(parsed).__name__)

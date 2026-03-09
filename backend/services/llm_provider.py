@@ -1,8 +1,8 @@
 """
 Abstract LLM provider interface and factory.
 
-Supports Ollama (local) and Gemini (cloud) backends.
-Set LLM_PROVIDER env var to 'ollama' or 'gemini'.
+Supports Ollama (local), MLX (local, Apple Silicon), and Gemini (cloud) backends.
+Set LLM_PROVIDER env var to 'ollama', 'mlx', or 'gemini'.
 """
 
 import os
@@ -55,6 +55,10 @@ def get_provider() -> LLMProvider:
         from services.gemini_client import GeminiProvider
 
         _provider_instance = GeminiProvider()
+    elif provider_name == "mlx":
+        from services.mlx_client import MLXProvider
+
+        _provider_instance = MLXProvider()
     else:
         from services.ollama_client import OllamaProvider
 

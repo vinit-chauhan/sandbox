@@ -1,8 +1,8 @@
-# Backend reaches Ollama on host via host.docker.internal.
-# Ollama must listen on 0.0.0.0: set OLLAMA_HOST=0.0.0.0 before starting Ollama.
+# Backend reaches Ollama/MLX on host via host.docker.internal.
+# Ollama: set OLLAMA_HOST=0.0.0.0, or use ./scripts/start-ollama.sh
+# MLX:    start with ./scripts/start-mlx.sh
 #
-# LLM_PROVIDER: "ollama" (default) or "gemini"
-# For Gemini: set GEMINI_API_KEY and optionally GEMINI_MODEL.
+# LLM_PROVIDER: "ollama" (default), "mlx" (Apple Silicon), or "gemini" (cloud)
 
 services:
   chromadb:
@@ -19,6 +19,8 @@ services:
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      MLX_BASE_URL: http://host.docker.internal:${MLX_PORT:-8080}
+      MLX_MODEL: ${MLX_MODEL:-}
       CHROMA_HOST: chromadb
       CHROMA_PORT: "8000"
       MODEL_NAME: ${MODEL_NAME:-qwen3.5:4b}

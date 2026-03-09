@@ -65,6 +65,11 @@ def _looks_like_phone(candidate: str, text: str, start: int, end: int) -> bool:
     return True
 
 
+def _looks_like_version(text: str, start: int) -> bool:
+    """Reject IPs preceded by '/' — they're version numbers (Chrome/140.0.0.0)."""
+    return start > 0 and text[start - 1] == "/"
+
+
 def _valid_ipv6(candidate: str) -> bool:
     """Return True if candidate is a valid IPv6 address."""
     try:
@@ -117,6 +122,8 @@ def detect_and_build_mapping(
     # 3. IPv4
     for m in IPV4_PATTERN.finditer(text):
         ip_str = m.group(0)
+        if _looks_like_version(text, m.start()):
+            continue
         try:
             ip = ipaddress.ip_address(ip_str)
         except ValueError:
@@ -177,6 +184,8 @@ def detect_pii(text: str, geoip_module: Any) -> dict[str, str]:
 
     for m in IPV4_PATTERN.finditer(text):
         ip_str = m.group(0)
+        if _looks_like_version(text, m.start()):
+            continue
         try:
             ip = ipaddress.ip_address(ip_str)
         except ValueError:

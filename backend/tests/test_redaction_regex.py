@@ -104,6 +104,15 @@ def test_phone_not_matching_hashes():
 
 
 @requires_geoip
+def test_version_number_not_matching_ip():
+    """Version numbers like Chrome/140.0.0.0 should not be treated as IPs."""
+    text = 'http_agent="Chrome/140.0.0.0 Safari/537.36"'
+    out, mapping = detect_and_build_mapping(text, geoip)
+    assert "140.0.0.0" not in mapping
+    assert out == text
+
+
+@requires_geoip
 def test_ipv6():
     """IPv6 public address replaced; IPv6 from allowlist unchanged."""
     # 2a02:cf40::1 is in allowlist (2a02:cf40::/29)
