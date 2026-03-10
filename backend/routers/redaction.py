@@ -20,6 +20,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
 
 MODEL_NAME = os.getenv("MODEL_NAME", "qwen2.5:7b")
+MLX_MODEL = os.getenv("MLX_MODEL", "mlx-community/Qwen3.5-9B-MLX-4bit")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")
+
+if LLM_PROVIDER == "mlx":
+    MODEL_NAME = MLX_MODEL
 
 
 @router.post("/redact")
@@ -30,7 +35,8 @@ async def redact(request: RedactRequest):
 
     def _on_chunk_progress(completed: int, total: int):
         pct = 50 + int((completed / total) * 45)
-        chunk_events.put_nowait({"step": "llm", "progress": pct, "chunk": completed, "total_chunks": total})
+        chunk_events.put_nowait(
+            {"step": "llm", "progress": pct, "chunk": completed, "total_chunks": total})
 
     async def event_stream():
         original_text = request.text
@@ -77,7 +83,8 @@ async def redact(request: RedactRequest):
                     event = chunk_events.get_nowait()
                     yield f"data: {json.dumps(event)}\n\n"
 
-                logger.info("LLM detection found %d PII items", len(llm_mapping))
+                logger.info("LLM detection found %d PII items",
+                            len(llm_mapping))
             except (httpx.HTTPError, httpx.RequestError, Exception) as exc:
                 logger.error("LLM redaction failed: %s", exc, exc_info=True)
                 warning = (

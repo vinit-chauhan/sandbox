@@ -141,6 +141,16 @@ export default function RedactPage() {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputGutterRef = useRef<HTMLDivElement>(null);
+
+  const inputLineCount = inputText ? inputText.split("\n").length : 1;
+
+  const syncInputScroll = () => {
+    if (inputGutterRef.current && textareaRef.current) {
+      inputGutterRef.current.scrollTop = textareaRef.current.scrollTop;
+    }
+  };
 
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault();
@@ -301,9 +311,21 @@ export default function RedactPage() {
                 : `${elapsedMs}ms`}
             </p>
           )}
-          <pre className="whitespace-pre-wrap rounded border border-gray-200 bg-gray-50 p-4 text-sm">
-            {renderHighlightedPreview(redactedText, mapping)}
-          </pre>
+          <div className="flex max-h-[70vh] overflow-auto rounded border border-gray-200 bg-gray-50">
+            <div
+              className="sticky left-0 z-10 select-none border-r border-gray-200 bg-gray-100 py-4 font-mono text-right text-xs leading-5 text-gray-400"
+              style={{ minWidth: "3rem" }}
+            >
+              {redactedText.split("\n").map((_, i) => (
+                <div key={i} className="px-2">
+                  {i + 1}
+                </div>
+              ))}
+            </div>
+            <pre className="whitespace-pre py-4 px-4 font-mono text-sm leading-5">
+              {renderHighlightedPreview(redactedText, mapping)}
+            </pre>
+          </div>
         </div>
       </div>
     );
@@ -318,21 +340,38 @@ export default function RedactPage() {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`rounded-lg border-2 border-dashed p-4 transition-colors ${
+          className={`rounded-lg border-2 border-dashed transition-colors ${
             dragging ? "border-blue-500 bg-blue-50" : "border-gray-300"
           }`}
         >
-          <textarea
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onFocus={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
-            placeholder="Drop a file or paste log text..."
-            className="h-48 w-full resize-none rounded border-0 bg-transparent p-2 text-gray-800 focus:outline-none"
-            aria-label="Log text input"
-          />
+          <div className="flex h-48">
+            <div
+              ref={inputGutterRef}
+              className="select-none overflow-hidden border-r border-gray-200 bg-gray-50 pt-2 font-mono text-right text-xs leading-5 text-gray-400"
+              style={{ minWidth: "3rem" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {Array.from({ length: inputLineCount }, (_, i) => (
+                <div key={i} className="pr-2">
+                  {i + 1}
+                </div>
+              ))}
+            </div>
+            <textarea
+              ref={textareaRef}
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onScroll={syncInputScroll}
+              onFocus={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              placeholder="Drop a file or paste log text..."
+              wrap="off"
+              className="h-full w-full resize-none border-0 bg-transparent p-2 font-mono text-sm leading-5 text-gray-800 focus:outline-none"
+              aria-label="Log text input"
+            />
+          </div>
           {!inputText && (
-            <p className="text-sm text-gray-500">
+            <p className="px-4 pb-2 text-sm text-gray-500">
               Drop a file or paste to get started
             </p>
           )}
