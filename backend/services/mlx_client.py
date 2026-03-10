@@ -44,13 +44,11 @@ class MLXProvider(LLMProvider):
             "model": model_name,
             "messages": messages,
             "stream": False,
-            "stop": ["<|eot_id|>", "<|end_of_text|>", "<|endoftext|>"],
+            # Disable thinking — reasoning tokens waste time and aren't used.
+            "chat_template_kwargs": {"enable_thinking": False},
         }
         if format_schema is not None:
             payload["response_format"] = {"type": "json_object"}
-            # Disable thinking/reasoning for structured extraction — it wastes
-            # tokens on chain-of-thought that we don't need for JSON output.
-            payload["chat_template_kwargs"] = {"enable_thinking": False}
 
         logger.debug("MLX chat request: model=%s, msgs=%d",
                      model_name, len(messages))
@@ -77,7 +75,9 @@ class MLXProvider(LLMProvider):
             "model": model_name,
             "messages": messages,
             "stream": True,
-            "stop": ["<|eot_id|>", "<|end_of_text|>", "<|endoftext|>"],
+            # Disable thinking for streaming — reasoning tokens go to a separate
+            # field and are never shown, causing the connection to sit idle.
+            "chat_template_kwargs": {"enable_thinking": False},
         }
         logger.info("MLX stream start: model=%s", model_name)
         async with httpx.AsyncClient(timeout=TIMEOUT) as client:
