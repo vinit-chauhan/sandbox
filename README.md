@@ -6,7 +6,8 @@ A self-hosted AI chat application that runs a Qwen model entirely on-device, let
 
 ```
 Host Machine
-└── Ollama            (LLM inference — native, uses Metal/GPU)
+├── Ollama            (LLM inference — Metal/GPU)
+└── MLX   (optional)  (Apple Silicon — faster on M-series Macs)
 
 Docker Compose
 ├── ChromaDB          (vector store for document chunks)
@@ -14,27 +15,82 @@ Docker Compose
 └── Frontend          (React + Vite + Tailwind — served by Nginx)
 ```
 
-Ollama runs natively on the host for full Metal/GPU acceleration. The Docker services reach it via `host.docker.internal`. Only port **80** is exposed to the host.
+The LLM provider (Ollama or MLX) runs natively on the host for full GPU acceleration. The Docker services reach it via `host.docker.internal`. Only port **80** is exposed to the host.
 
-## Quick Start
+## Prerequisites — LLM Provider
 
-1. **Install & start Ollama** on your host:
+The app needs a local LLM server running on your host machine. Pick **one** of the two providers below.
 
-   **Ollama Docker connectivity:** When the backend runs in Docker, it connects to Ollama via `host.docker.internal:11434`. Ollama binds to `127.0.0.1` by default and rejects connections from the host's network interface. Before starting Ollama, set `OLLAMA_HOST=0.0.0.0` so Ollama listens on all interfaces:
+> **Apple Silicon recommendation:** Use **MLX** — it is purpose-built for the Apple Neural Engine / Metal and delivers noticeably faster token generation than Ollama on M-series Macs.
 
-   - macOS/Linux: `export OLLAMA_HOST=0.0.0.0` then `ollama serve` (or `ollama run qwen3.5:4b` which starts serve)
-   - Or run: `OLLAMA_HOST=0.0.0.0 ollama run qwen3.5:4b`
+### Option A: MLX (Apple Silicon only)
+
+1. **Install `mlx-lm`:**
 
 ```bash
-# macOS — https://ollama.com/download
-# Pull the model you want:
+# via pipx (recommended — no venv to manage)
+pipx install mlx-lm
+
+# or in a virtual environment
+python3 -m venv .venv && source .venv/bin/activate && pip install mlx-lm
+```
+
+2. **Start the MLX server:**
+
+```bash
+# uses the helper script (default model: Qwen3.5-9B-MLX-4bit, port 8080)
+./scripts/start-mlx.sh
+
+# or start manually with a different model
+mlx_lm.server --model mlx-community/Qwen3.5-9B-MLX-4bit --host 0.0.0.0 --port 8080
+```
+
+3. **Set the provider** when launching Docker (see Quick Start below):
+
+```bash
+LLM_PROVIDER=mlx docker compose up --build
+```
+
+You can customise the model and port with env vars:
+
+```bash
+MLX_MODEL=mlx-community/Qwen3.5-9B-MLX-4bit MLX_PORT=8080 LLM_PROVIDER=mlx docker compose up --build
+```
+
+### Option B: Ollama (macOS / Linux / Windows)
+
+1. **Install Ollama** — download from [ollama.com](https://ollama.com/download).
+
+2. **Pull a model:**
+
+```bash
 ollama pull qwen3.5:4b
 ```
 
-2. **Start the Docker services**:
+3. **Start Ollama** so Docker containers can reach it. Ollama binds to `127.0.0.1` by default, which blocks connections from Docker's `host.docker.internal`. Set `OLLAMA_HOST=0.0.0.0` before starting:
 
 ```bash
+# quick start (sets the env var and launches in one line)
+OLLAMA_HOST=0.0.0.0 ollama run qwen3.5:4b
+
+# or use the helper script (includes GPU tuning, warm-up, etc.)
+./scripts/start-ollama.sh
+```
+
+Ollama is the default provider — no extra env vars needed when starting Docker.
+
+## Quick Start
+
+1. **Start your LLM provider** (see above).
+
+2. **Start the Docker services:**
+
+```bash
+# Ollama (default)
 docker compose up --build
+
+# MLX
+LLM_PROVIDER=mlx docker compose up --build
 ```
 
 3. Open [http://localhost](http://localhost) in your browser.
