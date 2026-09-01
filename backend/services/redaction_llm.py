@@ -19,8 +19,9 @@ PII_FORMAT_SCHEMA = {
         "hostnames": {"type": "array", "items": {"type": "string"}},
         "usernames": {"type": "array", "items": {"type": "string"}},
         "paths_with_usernames": {"type": "array", "items": {"type": "string"}},
+        "person_names": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["hostnames", "usernames", "paths_with_usernames"],
+    "required": ["hostnames", "usernames", "paths_with_usernames", "person_names"],
 }
 
 HOSTNAME_REPLACEMENTS = [
@@ -29,27 +30,37 @@ HOSTNAME_REPLACEMENTS = [
     "worker-gamma.example.com",
 ]
 
-USERNAME_REPLACEMENTS = ["john.doe", "alice.smith", "bob.jones"]
+USERNAME_REPLACEMENTS = ["alex.j", "bob.m", "carol.c", "dan.k", "eve.p"]
+
+PERSON_NAME_REPLACEMENTS = [
+    "Alex Johnson",
+    "Bob Martinez",
+    "Carol Chen",
+    "Dan Kim",
+    "Eve Patel",
+]
 
 MAX_RETRIES = 2
 CHUNK_LINES = 80
 
 SYSTEM_PROMPT = """\
-You extract PII from log text. Return ONLY a JSON object with three arrays:
+You extract PII from log text. Return ONLY a JSON object with four arrays:
 - hostnames: server names, FQDNs, device names (e.g. "prod-db.acme.com")
 - usernames: login names, user_name values, account names (e.g. "jsmith", "MSC.Dept")
 - paths_with_usernames: file paths that contain a username (e.g. "/home/jsmith/logs")
+- person_names: human first/last names, display names, full names found in CN fields, realname fields, or freeform text (e.g. "bobby tables", "Margaret Twee")
 
 Logs may be in any format: syslog, key=value pairs, JSON, etc.
-Look for fields like user_name=, user=, account=, login=, hostname=, device_id=, etc.
+Look for fields like user_name=, user=, account=, login=, hostname=, device_id=, cn=, realname=, displayName=, name=, etc.
 Always return the JSON object even if a category is empty (use []).
 Do NOT include IPs or emails (those are handled separately).
 You MUST respond with ONLY a JSON object, no other text."""
 
 FEW_SHOT_EXAMPLE_INPUT = """\
 2024-01-15 ERROR on web-prod-03.internal: user alice.wu failed auth at /home/alice.wu/app/config
-<189>date=2025-10-13 time=14:02:50 device_id=FW123 user_name="admin.ops" http_host="lb-prod.corp.local\""""
-FEW_SHOT_EXAMPLE_OUTPUT = '{"hostnames": ["web-prod-03.internal", "lb-prod.corp.local"], "usernames": ["alice.wu", "admin.ops"], "paths_with_usernames": ["/home/alice.wu/app/config"]}'
+<189>date=2025-10-13 time=14:02:50 device_id=FW123 user_name="admin.ops" http_host="lb-prod.corp.local"
+LDAP lookup: cn=bobby tables,ou=users,dc=corp,dc=local — realname="Margaret Twee\""""
+FEW_SHOT_EXAMPLE_OUTPUT = '{"hostnames": ["web-prod-03.internal", "lb-prod.corp.local"], "usernames": ["alice.wu", "admin.ops"], "paths_with_usernames": ["/home/alice.wu/app/config"], "person_names": ["bobby tables", "Margaret Twee"]}'
 
 
 def _next_hostname(index: int) -> str:
@@ -58,6 +69,10 @@ def _next_hostname(index: int) -> str:
 
 def _next_username(index: int) -> str:
     return USERNAME_REPLACEMENTS[index % len(USERNAME_REPLACEMENTS)]
+
+
+def _next_person_name(index: int) -> str:
+    return PERSON_NAME_REPLACEMENTS[index % len(PERSON_NAME_REPLACEMENTS)]
 
 
 def _extract_username_from_path(path: str) -> str | None:
@@ -104,6 +119,14 @@ def _build_mapping_from_parsed(parsed: dict) -> dict[str, str]:
             redacted_path = path_str.replace(username, mapping[username])
             if path_str not in mapping:
                 mapping[path_str] = redacted_path
+
+    person_name_idx = 0
+    for person_name in parsed.get("person_names") or []:
+        person_name = str(person_name).strip()
+        if not person_name or person_name in mapping:
+            continue
+        mapping[person_name] = _next_person_name(person_name_idx)
+        person_name_idx += 1
 
     return mapping
 
@@ -166,7 +189,7 @@ async def _extract_pii_raw(
             logger.error("LLM call failed (attempt %d/%d): %s", attempt, MAX_RETRIES, exc, exc_info=True)
             break
 
-    return {"hostnames": [], "usernames": [], "paths_with_usernames": []}
+    return {"hostnames": [], "usernames": [], "paths_with_usernames": [], "person_names": []}
 
 
 async def extract_pii_mapping(
@@ -195,17 +218,20 @@ async def extract_pii_mapping(
     all_hostnames: list[str] = []
     all_usernames: list[str] = []
     all_paths: list[str] = []
+    all_person_names: list[str] = []
 
     for idx, chunk in enumerate(chunks):
         parsed = await _extract_pii_raw(chunk, model)
         all_hostnames.extend(parsed.get("hostnames") or [])
         all_usernames.extend(parsed.get("usernames") or [])
         all_paths.extend(parsed.get("paths_with_usernames") or [])
-        logger.info("Chunk %d/%d done: %d hostnames, %d usernames, %d paths",
+        all_person_names.extend(parsed.get("person_names") or [])
+        logger.info("Chunk %d/%d done: %d hostnames, %d usernames, %d paths, %d names",
                      idx + 1, len(chunks),
                      len(parsed.get("hostnames") or []),
                      len(parsed.get("usernames") or []),
-                     len(parsed.get("paths_with_usernames") or []))
+                     len(parsed.get("paths_with_usernames") or []),
+                     len(parsed.get("person_names") or []))
         if on_chunk_progress:
             on_chunk_progress(idx + 1, len(chunks))
 
@@ -213,6 +239,7 @@ async def extract_pii_mapping(
         "hostnames": all_hostnames,
         "usernames": all_usernames,
         "paths_with_usernames": all_paths,
+        "person_names": all_person_names,
     }
     mapping = _build_mapping_from_parsed(merged)
     logger.info("PII extraction complete: %d total mappings from %d chunks", len(mapping), len(chunks))

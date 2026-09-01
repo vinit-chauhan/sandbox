@@ -17,6 +17,8 @@ interface ChatContextValue {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   input: string;
   setInput: React.Dispatch<React.SetStateAction<string>>;
+  thinkingEnabled: boolean;
+  setThinkingEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   handleUploaded: (doc: Doc) => void;
   handleDeleted: (id: string) => void;
   handleToggle: (id: string) => void;
@@ -29,6 +31,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [thinkingEnabled, setThinkingEnabled] = useState(false);
 
   useEffect(() => {
     getDocuments().then(setDocs).catch(console.error);
@@ -59,6 +62,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setMessages,
     input,
     setInput,
+    thinkingEnabled,
+    setThinkingEnabled,
     handleUploaded,
     handleDeleted,
     handleToggle,

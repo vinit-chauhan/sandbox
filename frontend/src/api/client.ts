@@ -11,6 +11,7 @@ export interface ChatTiming {
 export interface Message {
   role: "user" | "assistant";
   content: string;
+  thinking?: string;
   timing?: ChatTiming;
 }
 
@@ -18,6 +19,7 @@ export interface ChatRequest {
   message: string;
   document_ids?: string[];
   history: Message[];
+  enable_thinking?: boolean;
 }
 
 export async function uploadFile(file: File): Promise<Doc> {
@@ -42,10 +44,11 @@ export async function deleteDocument(id: string): Promise<void> {
 export async function streamChat(
   req: ChatRequest,
   onToken: (token: string) => void,
+  onThinking?: (token: string) => void,
 ): Promise<ChatTiming> {
   const start = performance.now();
   let ttft = 0;
-  let firstToken = true;
+  let firstContentToken = true;
 
   const res = await fetch("/api/chat", {
     method: "POST",
@@ -77,10 +80,12 @@ export async function streamChat(
       }
       try {
         const parsed = JSON.parse(payload);
-        if (parsed.token) {
-          if (firstToken) {
+        if (parsed.type === "thinking" && parsed.token && onThinking) {
+          onThinking(parsed.token);
+        } else if (parsed.token) {
+          if (firstContentToken) {
             ttft = performance.now() - start;
-            firstToken = false;
+            firstContentToken = false;
           }
           onToken(parsed.token);
         }

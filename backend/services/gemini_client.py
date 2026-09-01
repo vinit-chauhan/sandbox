@@ -13,7 +13,7 @@ from typing import AsyncGenerator
 from google import genai
 from google.genai import types
 
-from services.llm_provider import LLMProvider
+from services.llm_provider import LLMProvider, StreamEvent, StreamEventType
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +117,35 @@ class GeminiProvider(LLMProvider):
             text = chunk.text
             if text:
                 yield text
+
+    async def stream_chat_with_thinking(
+        self, messages: list[dict], model: str, enable_thinking: bool = False
+    ) -> AsyncGenerator[StreamEvent, None]:
+        model_name = self._resolve_model(model)
+        system_instruction, contents = _messages_to_gemini(messages)
+
+        config_kwargs: dict = {}
+        if system_instruction:
+            config_kwargs["system_instruction"] = system_instruction
+        if enable_thinking:
+            config_kwargs["thinking_config"] = types.ThinkingConfig(
+                thinking_budget=8192,
+            )
+
+        config = types.GenerateContentConfig(**config_kwargs) if config_kwargs else None
+
+        logger.info("Gemini stream (thinking=%s) start: model=%s", enable_thinking, model_name)
+        async for chunk in await self._client.aio.models.generate_content_stream(
+            model=model_name,
+            contents=contents,
+            config=config,
+        ):
+            if chunk.candidates:
+                for part in chunk.candidates[0].content.parts:
+                    if hasattr(part, "thought") and part.thought:
+                        yield StreamEvent(type=StreamEventType.THINKING, text=part.text)
+                    elif part.text:
+                        yield StreamEvent(type=StreamEventType.CONTENT, text=part.text)
 
     def is_available(self) -> bool:
         if not GEMINI_API_KEY:

@@ -7,7 +7,20 @@ Set LLM_PROVIDER env var to 'ollama', 'mlx', or 'gemini'.
 
 import os
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from enum import Enum
 from typing import AsyncGenerator
+
+
+class StreamEventType(str, Enum):
+    THINKING = "thinking"
+    CONTENT = "content"
+
+
+@dataclass
+class StreamEvent:
+    type: StreamEventType
+    text: str
 
 
 class LLMProvider(ABC):
@@ -27,6 +40,17 @@ class LLMProvider(ABC):
     ) -> AsyncGenerator[str, None]:
         """Streaming chat. Yields token strings."""
         ...
+
+    async def stream_chat_with_thinking(
+        self, messages: list[dict], model: str, enable_thinking: bool = False
+    ) -> AsyncGenerator[StreamEvent, None]:
+        """Streaming chat with thinking support. Yields StreamEvent objects.
+
+        Default implementation wraps stream_chat — all tokens as CONTENT events.
+        Providers override this to support native thinking/reasoning modes.
+        """
+        async for token in self.stream_chat(messages, model):
+            yield StreamEvent(type=StreamEventType.CONTENT, text=token)
 
     @abstractmethod
     def is_available(self) -> bool:

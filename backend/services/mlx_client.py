@@ -1,8 +1,8 @@
 """
 MLX LLM provider using mlx_lm.server (OpenAI-compatible API).
 
-Start the server with: mlx_lm.server --model <model> --port 8080
-The backend connects via MLX_BASE_URL (default http://localhost:8080).
+Start the server with: mlx_lm.server --model <model> --port <MLX_PORT>
+The backend connects via MLX_BASE_URL:MLX_PORT (default http://localhost:8080).
 
 Set MLX_MODEL to the same model name you started the server with.
 """
@@ -11,14 +11,21 @@ import json
 import logging
 import os
 from typing import AsyncGenerator
+from urllib.parse import urlparse
 
 import httpx
 
-from services.llm_provider import LLMProvider
+from services.llm_provider import LLMProvider, StreamEvent, StreamEventType
 
 logger = logging.getLogger(__name__)
 
-MLX_BASE_URL = os.getenv("MLX_BASE_URL", "http://localhost:8080")
+_mlx_url = os.getenv("MLX_BASE_URL", "http://localhost")
+if urlparse(_mlx_url).port:
+    MLX_BASE_URL = _mlx_url
+else:
+    _mlx_port = os.getenv("MLX_PORT", "8080")
+    MLX_BASE_URL = f"{_mlx_url}:{_mlx_port}"
+
 MLX_MODEL = os.getenv("MLX_MODEL", "mlx-community/Qwen3.5-9B-MLX-4bit")
 TIMEOUT = float(os.getenv("MLX_TIMEOUT", "120"))
 
@@ -103,6 +110,45 @@ class MLXProvider(LLMProvider):
                         )
                         if delta:
                             yield delta
+                    except json.JSONDecodeError:
+                        continue
+
+    async def stream_chat_with_thinking(
+        self, messages: list[dict], model: str, enable_thinking: bool = False
+    ) -> AsyncGenerator[StreamEvent, None]:
+        model_name = self._resolve_model()
+        payload = {
+            "model": model_name,
+            "messages": messages,
+            "stream": True,
+            "chat_template_kwargs": {"enable_thinking": enable_thinking},
+        }
+        logger.info("MLX stream (thinking=%s) start: model=%s",
+                    enable_thinking, model_name)
+        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+            async with client.stream(
+                "POST",
+                f"{MLX_BASE_URL}/v1/chat/completions",
+                json=payload,
+            ) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    line = line.strip()
+                    if not line or not line.startswith("data: "):
+                        continue
+                    payload_str = line[6:]
+                    if payload_str == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(payload_str)
+                        delta = chunk.get("choices", [{}])[0].get("delta", {})
+                        # MLX puts reasoning in a separate field
+                        reasoning = delta.get("reasoning_content", "")
+                        content = delta.get("content", "")
+                        if reasoning:
+                            yield StreamEvent(type=StreamEventType.THINKING, text=reasoning)
+                        if content:
+                            yield StreamEvent(type=StreamEventType.CONTENT, text=content)
                     except json.JSONDecodeError:
                         continue
 

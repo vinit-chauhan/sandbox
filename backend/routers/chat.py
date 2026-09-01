@@ -34,11 +34,18 @@ async def chat(request: ChatRequest):
     messages.append({"role": "user", "content": request.message})
 
     provider = get_provider()
-    logger.info("Chat request: provider=%s, model=%s", provider.name, MODEL_NAME)
+    logger.info("Chat request: provider=%s, model=%s, thinking=%s",
+                provider.name, MODEL_NAME, request.enable_thinking)
 
     async def event_stream():
-        async for token in provider.stream_chat(messages, MODEL_NAME):
-            yield f"data: {json.dumps({'token': token})}\n\n"
+        if request.enable_thinking:
+            async for event in provider.stream_chat_with_thinking(
+                messages, MODEL_NAME, enable_thinking=True
+            ):
+                yield f"data: {json.dumps({'type': event.type.value, 'token': event.text})}\n\n"
+        else:
+            async for token in provider.stream_chat(messages, MODEL_NAME):
+                yield f"data: {json.dumps({'token': token})}\n\n"
         yield "data: [DONE]\n\n"
         logger.debug("Chat stream completed")
 

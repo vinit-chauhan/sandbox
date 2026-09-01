@@ -2,10 +2,13 @@ import logging
 import os
 import sys
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers import chat, documents, redaction
+
+load_dotenv()
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
@@ -42,4 +45,15 @@ app.include_router(redaction.router)
 async def startup():
     provider_name = os.getenv("LLM_PROVIDER", "ollama")
     logger.info("Starting up — LLM provider: %s", provider_name)
-    logger.info("Model: %s", os.getenv("MODEL_NAME", "qwen2.5:7b"))
+    match provider_name:
+        case "mlx":
+            logger.info("Model: %s", os.getenv(
+                "MLX_MODEL", "mlx-community/Qwen3.5-9B-MLX-4bit"))
+        case "gemini":
+            logger.info("Model: %s", os.getenv(
+                "GEMINI_MODEL", "gemini-2.0-flash"))
+        case "ollama":
+            logger.info("Model: %s", os.getenv("MODEL_NAME", "qwen2.5:7b"))
+        case _:
+            logger.error("Invalid provider: %s", provider_name)
+            raise ValueError(f"Invalid provider: {provider_name}")

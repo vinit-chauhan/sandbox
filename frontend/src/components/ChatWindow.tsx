@@ -4,9 +4,10 @@ import { useChatContext } from "../context/ChatContext";
 import MessageBubble from "./MessageBubble";
 
 export default function ChatWindow() {
-  const { messages, setMessages, input, setInput, checkedIds } =
+  const { messages, setMessages, input, setInput, checkedIds, thinkingEnabled, setThinkingEnabled } =
     useChatContext();
   const [streaming, setStreaming] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,16 +28,28 @@ export default function ChatWindow() {
     setMessages((prev) => [...prev, assistantMsg]);
 
     try {
+      if (thinkingEnabled) {
+        setIsThinking(true);
+        assistantMsg.thinking = "";
+      }
       const timing = await streamChat(
         {
           message: text,
           document_ids: checkedIds.length > 0 ? checkedIds : undefined,
           history: messages,
+          enable_thinking: thinkingEnabled || undefined,
         },
         (token) => {
+          setIsThinking(false);
           assistantMsg.content += token;
           setMessages((prev) => [...prev.slice(0, -1), { ...assistantMsg }]);
         },
+        thinkingEnabled
+          ? (token) => {
+              assistantMsg.thinking = (assistantMsg.thinking || "") + token;
+              setMessages((prev) => [...prev.slice(0, -1), { ...assistantMsg }]);
+            }
+          : undefined,
       );
       assistantMsg.timing = timing;
       setMessages((prev) => [...prev.slice(0, -1), { ...assistantMsg }]);
@@ -47,6 +60,7 @@ export default function ChatWindow() {
     }
 
     setStreaming(false);
+    setIsThinking(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -70,12 +84,15 @@ export default function ChatWindow() {
           </div>
         )}
         {messages.map((msg, i) => (
-          <MessageBubble key={i} role={msg.role} content={msg.content} timing={msg.timing} />
+          <MessageBubble key={i} role={msg.role} content={msg.content} thinking={msg.thinking} timing={msg.timing} />
         ))}
         {streaming && messages[messages.length - 1]?.content === "" && (
           <div className="flex justify-start mb-3">
             <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-md px-4 py-2.5 shadow-sm">
-              <span className="inline-flex gap-1">
+              <span className="inline-flex items-center gap-1">
+                {isThinking && (
+                  <span className="text-xs text-purple-600 font-medium mr-1">Thinking</span>
+                )}
                 <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
                 <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]" />
                 <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:300ms]" />
@@ -104,13 +121,26 @@ export default function ChatWindow() {
             rows={2}
             className="flex-1 resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
-          <button
-            onClick={handleSend}
-            disabled={streaming || !input.trim()}
-            className="self-end rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Send
-          </button>
+          <div className="flex flex-col gap-1 self-end">
+            <button
+              onClick={() => setThinkingEnabled((prev) => !prev)}
+              title={thinkingEnabled ? "Disable thinking" : "Enable thinking"}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                thinkingEnabled
+                  ? "bg-purple-100 text-purple-700 border border-purple-300"
+                  : "bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200"
+              }`}
+            >
+              Think
+            </button>
+            <button
+              onClick={handleSend}
+              disabled={streaming || !input.trim()}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Send
+            </button>
+          </div>
         </div>
       </div>
     </>

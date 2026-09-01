@@ -40,6 +40,31 @@ IPV6_PATTERN = re.compile(
 )
 
 
+# CN (Common Name) pattern for LDAP-style distinguished names — fallback when LLM is unavailable
+CN_PATTERN = re.compile(r"cn=([^,]+)", re.IGNORECASE)
+
+PERSON_NAME_REPLACEMENTS = [
+    "Alex Johnson",
+    "Bob Martinez",
+    "Carol Chen",
+    "Dan Kim",
+    "Eve Patel",
+]
+
+
+def detect_cn_names(text: str) -> dict[str, str]:
+    """Detect person names in CN fields and return a replacement mapping."""
+    mapping: dict[str, str] = {}
+    idx = 0
+    for m in CN_PATTERN.finditer(text):
+        name = m.group(1).strip()
+        if not name or name in mapping:
+            continue
+        mapping[name] = PERSON_NAME_REPLACEMENTS[idx % len(PERSON_NAME_REPLACEMENTS)]
+        idx += 1
+    return mapping
+
+
 def _looks_like_phone(candidate: str, text: str, start: int, end: int) -> bool:
     """Filter out false positives from the phone regex."""
     stripped = candidate.strip()

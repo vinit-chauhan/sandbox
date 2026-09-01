@@ -19,7 +19,8 @@ services:
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
-      MLX_BASE_URL: http://host.docker.internal:${MLX_PORT:-8080}
+      MLX_BASE_URL: http://host.docker.internal
+      MLX_PORT: ${MLX_PORT:-8080}
       MLX_MODEL: ${MLX_MODEL:-}
       CHROMA_HOST: chromadb
       CHROMA_PORT: "8000"

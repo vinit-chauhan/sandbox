@@ -7,8 +7,16 @@
 #
 set -euo pipefail
 
-MODEL="${1:-mlx-community/Qwen3.5-9B-MLX-4bit}"
-PORT="${MLX_PORT:-8080}"
+# Load .env if it exists (from repo root, relative to this script)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$SCRIPT_DIR/../.env"
+if [[ -f "$ENV_FILE" ]]; then
+    # shellcheck disable=SC1090
+    set -a; source "$ENV_FILE"; set +a
+fi
+
+MODEL="${1:-${MLX_MODEL:-mlx-community/Qwen3.5-9B-MLX-4bit}}"
+PORT="${MLX_PORT:-8081}"
 
 if ! command -v mlx_lm.server &> /dev/null; then
     echo "mlx-lm not found. Installing via pipx..."

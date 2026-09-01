@@ -11,6 +11,7 @@ class ChatRequest(BaseModel):
     message: str
     document_ids: Optional[list[str]] = None
     history: list[Message] = []
+    enable_thinking: bool = False
 
 
 class DocumentInfo(BaseModel):
